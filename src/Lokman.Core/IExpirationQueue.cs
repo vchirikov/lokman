@@ -6,6 +6,7 @@ namespace Lokman
 {
     public interface IExpirationQueue
     {
-        ValueTask EqueueAsync(long ticks, Action action, CancellationToken cancellationToken = default);
+        ValueTask EnqueueAsync(string key, long ticks, Action action, CancellationToken cancellationToken = default);
+        ValueTask DequeueAsync(string key, CancellationToken cancellationToken = default);
     }
 }

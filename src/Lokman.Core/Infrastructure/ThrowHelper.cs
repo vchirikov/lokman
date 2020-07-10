@@ -1,10 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace Lokman
 {
-
     internal static class ThrowHelper
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -40,5 +40,8 @@ namespace Lokman
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void ObjectDisposedException(string objectName) => throw new ObjectDisposedException(objectName);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void KeyNotFoundException(string message) => throw new KeyNotFoundException(message);
     }
 }

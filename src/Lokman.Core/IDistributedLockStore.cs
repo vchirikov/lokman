@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,11 +24,15 @@ namespace Lokman
         private readonly ITime _time;
 
         private readonly IExpirationQueue _expirationQueue;
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks
+
+        internal readonly ConcurrentDictionary<string, SemaphoreSlim> _locks
             = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.OrdinalIgnoreCase);
 
+        private readonly ConcurrentDictionary<string, long> _lockEpochs
+            = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
         private static readonly Func<string, SemaphoreSlim> _cachedAddFactory
-            = _ => new SemaphoreSlim(1,1) ;
+            = _ => new SemaphoreSlim(1, 1);
 
         public DistributedLockStore(IExpirationQueue expirationQueue) : this(expirationQueue, SystemTime.Instance) { }
 
@@ -43,7 +48,7 @@ namespace Lokman
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await _expirationQueue.EqueueAsync(expiration, () => semaphore.Release(), cancellationToken).ConfigureAwait(false);
+                await _expirationQueue.EnqueueAsync(key, expiration, () => semaphore.Release(), cancellationToken).ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -51,7 +56,9 @@ namespace Lokman
                 semaphore.Release();
                 throw;
             }
-            return NextEpoch();
+            var result = NextEpoch();
+            SaveEpoch(key, result);
+            return result;
         }
 
         public ValueTask CollectGarbageAsync(CancellationToken cancellationToken = default)
@@ -59,9 +66,21 @@ namespace Lokman
             throw new System.NotImplementedException();
         }
 
-        public ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default)
+        public async ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default)
         {
-            throw new System.NotImplementedException();
+            if (!_locks.TryGetValue(key, out var semaphore))
+                ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
+
+            if (!_lockEpochs.TryGetValue(key, out var savedIndex))
+                ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
+
+            if (savedIndex == index)
+            {
+                await _expirationQueue.DequeueAsync(key, cancellationToken).ConfigureAwait(false);
+                semaphore!.Release();
+                return NextEpoch();
+            }
+            return CurrentEpoch();
         }
 
         public ValueTask<Epoch> SetExpirationAsync(string key, long index, long expiration, CancellationToken cancellationToken = default)
@@ -69,6 +88,10 @@ namespace Lokman
             throw new System.NotImplementedException();
         }
 
+        // for testing
+
+        protected virtual internal void SaveEpoch(string key, Epoch result)
+            => _lockEpochs[key] = result.Index;
 
         protected virtual internal Epoch NextEpoch()
             => new Epoch(Interlocked.Increment(ref _epoch), _time.UtcNow.UtcTicks);
