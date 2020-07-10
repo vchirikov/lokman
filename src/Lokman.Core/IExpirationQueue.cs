@@ -8,5 +8,6 @@ namespace Lokman
     {
         ValueTask EnqueueAsync(string key, long ticks, Action action, CancellationToken cancellationToken = default);
         ValueTask DequeueAsync(string key, CancellationToken cancellationToken = default);
+        ValueTask UpdateExpirationAsync(string key, long ticks, CancellationToken cancellationToken = default);
     }
 }

@@ -63,7 +63,7 @@ namespace Lokman
 
         public ValueTask CollectGarbageAsync(CancellationToken cancellationToken = default)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public async ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default)
@@ -83,9 +83,17 @@ namespace Lokman
             return CurrentEpoch();
         }
 
-        public ValueTask<Epoch> SetExpirationAsync(string key, long index, long expiration, CancellationToken cancellationToken = default)
+        public async ValueTask<Epoch> SetExpirationAsync(string key, long index, long expiration, CancellationToken cancellationToken = default)
         {
-            throw new System.NotImplementedException();
+            if (!_lockEpochs.TryGetValue(key, out var savedIndex))
+                ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
+
+            if (savedIndex == index)
+            {
+                await _expirationQueue.UpdateExpirationAsync(key, expiration, cancellationToken).ConfigureAwait(false);
+                return NextEpoch();
+            }
+            return CurrentEpoch();
         }
 
         // for testing
