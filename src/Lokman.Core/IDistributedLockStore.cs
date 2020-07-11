@@ -61,10 +61,6 @@ namespace Lokman
             return result;
         }
 
-        public ValueTask CollectGarbageAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
 
         public async ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default)
         {
@@ -96,6 +92,10 @@ namespace Lokman
             return CurrentEpoch();
         }
 
+        public ValueTask CollectGarbageAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
         // for testing
 
         protected virtual internal void SaveEpoch(string key, Epoch result)

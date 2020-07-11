@@ -3,8 +3,6 @@
   <PropertyGroup>
   </PropertyGroup>
   <ItemGroup Label="nupkg Versions">
-  </ItemGroup>
-  <ItemGroup Label="Tests nupkg Versions">
     <PackageReference Update="Moq" Version="4.14.5" />
     <PackageReference Update="Moq.Analyzers" Version="0.0.8" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="16.6.1" />
