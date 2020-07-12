@@ -51,9 +51,6 @@ namespace Lokman
 
         private readonly ManualResetEventSlim _wakeupEvent = new ManualResetEventSlim(false);
 
-        private static readonly Comparer<ExpirationRecord> _ticksComparer
-            = Comparer<ExpirationRecord>.Create((t1, t2) => unchecked((int)(t1.Ticks - t2.Ticks)));
-
         private readonly Predicate<ExpirationRecord> _cachedDeletePredicate;
 
         // for testing
@@ -198,7 +195,7 @@ namespace Lokman
                 {
                     _updateLock.Release();
                 }
-                _actions.Sort(_ticksComparer);
+                _actions.Sort();
             }
         }
 
@@ -293,7 +290,7 @@ namespace Lokman
             public static implicit operator ExpirationRecord((string Key, long Ticks, Action Action) value)
                 => new ExpirationRecord(value.Key, value.Ticks, value.Action);
             public ExpirationRecord(string key, long ticks, Action action) => (Key, Ticks, Action) = (key, ticks, action);
-            public int CompareTo(ExpirationRecord? record) => Ticks.CompareTo(record);
+            public int CompareTo(ExpirationRecord? record) => record is null ? -1 : Ticks.CompareTo(record.Ticks);
             public int CompareTo(object? obj) => CompareTo(obj as ExpirationRecord);
             public void Deconstruct(out string key, out long ticks, out Action action) => (key, ticks, action) = (Key, Ticks, Action);
             public override bool Equals(object? obj) => Equals(obj as ExpirationRecord);

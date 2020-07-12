@@ -82,6 +82,61 @@ namespace Lokman.Tests
         }
 
         [Fact]
+        public async Task DequeueAsync_Should_DeleteAction()
+        {
+            var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
+            var time = Mock.Of<ITime>(t => t.UtcNow == moment);
+
+            using var queue = new ExpirationQueue(time, false);
+            queue._actions.Add(("foo", 100, () => { }));
+
+            await queue.DequeueAsync("Foo").ConfigureAwait(false);
+            queue.ThreadLoopBody();
+
+            Assert.Empty(queue._actions);
+        }
+
+        [Fact]
+        public void ThreadLoopBody_Should_SortActionsByTicks()
+        {
+            var moment = new DateTimeOffset(0, TimeSpan.Zero);
+            var time = Mock.Of<ITime>(t => t.UtcNow == moment);
+
+            using var queue = new ExpirationQueue(time, false);
+
+            queue._actions.Add(("foo1", 100, () => { }));
+            queue._actions.Add(("foo4", 400, () => { }));
+            queue._actions.Add(("foo3", 300, () => { }));
+            queue._actions.Add(("foo2", 200, () => { }));
+
+            queue.ThreadLoopBody();
+
+            Assert.Equal(100,queue._actions[0].Ticks);
+            Assert.Equal(200, queue._actions[1].Ticks);
+            Assert.Equal(300, queue._actions[2].Ticks);
+        }
+
+        [Fact]
+        public async Task UpdateExpirationAsync_Should_SortActionsByTicks()
+        {
+            var moment = new DateTimeOffset(0, TimeSpan.Zero);
+            var time = Mock.Of<ITime>(t => t.UtcNow == moment);
+
+            using var queue = new ExpirationQueue(time, false);
+
+            queue._actions.Add(("foo1", 100, () => { }));
+            queue._actions.Add(("foo2", 200, () => { }));
+            queue._actions.Add(("foo3", 300, () => { }));
+
+            await queue.UpdateExpirationAsync("Foo2", 400).ConfigureAwait(false);
+            queue.ThreadLoopBody();
+
+            Assert.Equal(100,queue._actions[0].Ticks);
+            Assert.Equal(300, queue._actions[1].Ticks);
+            Assert.Equal(400, queue._actions[2].Ticks);
+        }
+
+        [Fact]
         public async Task UpdateExpirationAsync_Should_ChangeTicksValueAfterProcessSets()
         {
             var moment = new DateTimeOffset(0, TimeSpan.Zero);
