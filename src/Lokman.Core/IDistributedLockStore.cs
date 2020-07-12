@@ -61,7 +61,6 @@ namespace Lokman
             return result;
         }
 
-
         public async ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default)
         {
             if (!_locks.TryGetValue(key, out var semaphore))

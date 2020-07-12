@@ -16,7 +16,20 @@ namespace Lokman
 
     public class ExpirationQueue : IDisposable, IExpirationQueue
     {
-        internal readonly long _defaultWaitTicks = TimeSpan.FromMilliseconds(200).Ticks;
+        /// <summary>
+        /// The max ticks between action and current time, when we will use <see cref="Thread.SpinWait(int)"/>
+        /// After the threshold we will use <see cref="ManualResetEventSlim.Wait(TimeSpan, CancellationToken)"/>
+        /// <seealso cref="ThreadEntryPoint"/>
+        /// </summary>
+        public long SpinWaitMaxTicksThreshold = TimeSpan.FromSeconds(1).Ticks;
+
+        /// <summary>
+        /// The number of iterations that will be used in <seealso cref="Thread.SpinWait(int)"/>
+        /// if current ticks are less than <see cref="SpinWaitMaxTicksThreshold"/>
+        /// Default value is around 0.03 ms
+        /// <seealso cref="ThreadEntryPoint"/>
+        /// </summary>
+        public int SpinWaitIterations = 1_000;
 
         private readonly ITime _time;
         private readonly Thread? _workerThread;
@@ -29,8 +42,11 @@ namespace Lokman
         private readonly List<(string Key, long Ticks, Action Action)> _pendingActions
             = new List<(string Key, long Ticks, Action Action)>();
 
-        private readonly SemaphoreSlim _pendingLock = new SemaphoreSlim(1, 1);
-        private ManualResetEventSlim _wakeupEvent = new ManualResetEventSlim(false);
+        private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+        private readonly ManualResetEventSlim _wakeupEvent = new ManualResetEventSlim(false);
+
+        private static readonly Comparer<(string Key, long Ticks, Action Action)> _comparer
+            = Comparer<(string Key, long Ticks, Action Action)>.Create((t1, t2) => unchecked((int)(t1.Ticks - t2.Ticks)));
 
         // for testing
         internal ExpirationQueue(ITime time, bool runThread)
@@ -49,69 +65,97 @@ namespace Lokman
             }
         }
 
-        private void ThreadEntryPoint()
+        internal void ThreadEntryPoint()
         {
-            var toRemove = new List<(string Key, long Ticks, Action Action)>();
             while (!_cancellationTokenSource.Token.IsCancellationRequested)
             {
-                long waitTicks = ThreadLoopBody(toRemove);
-                _wakeupEvent.Wait(TimeSpan.FromTicks(waitTicks), _cancellationTokenSource.Token);
-            }
-        }
-
-        internal long ThreadLoopBody(List<(string Key, long Ticks, Action Action)> toRemove)
-        {
-            _pendingLock.Wait(_cancellationTokenSource.Token);
-            try
-            {
-                if (_pendingActions.Count > 0)
+                try
                 {
-                    _actions.AddRange(_pendingActions);
-                    _pendingActions.Clear();
-                }
-            }
-            finally
-            {
-                _pendingLock.Release();
-            }
-
-            long waitTicks = _defaultWaitTicks;
-            if (_actions.Count > 0)
-            {
-                var currentTicks = _time.UtcNow.UtcTicks;
-                long? nextMinTicks = null;
-                foreach (var tuple in _actions)
-                {
-                    if ((tuple.Ticks - currentTicks) <= 0)
+                    long ticksToNextFire = ThreadLoopBody();
+                    if (ticksToNextFire < 0)
                     {
-                        toRemove.Add(tuple);
-                        try
-                        {
-                            tuple.Action();
-                        }
-                        catch (Exception ex)
-                        {
-                            // ToDo: add logging here
-                            Debug.WriteLine($"Action of ({tuple.Key}, {tuple.Ticks}) throws exception: {ex}");
-                        }
+                        WaitWithWakeup(TimeSpan.FromMilliseconds(-1));
+                    }
+                    else if (ticksToNextFire > SpinWaitMaxTicksThreshold)
+                    {
+                        var ticksToStartSpinWait = ticksToNextFire - SpinWaitMaxTicksThreshold + 1;
+                        WaitWithWakeup(TimeSpan.FromTicks(ticksToStartSpinWait));
                     }
                     else
                     {
-                        if (nextMinTicks == null)
-                            nextMinTicks = tuple.Ticks;
-                        else if (nextMinTicks > tuple.Ticks)
-                            nextMinTicks = tuple.Ticks;
+                        SpinWait(SpinWaitIterations);
                     }
                 }
-                foreach (var item in toRemove)
-                    _actions.Remove(item);
-                toRemove.Clear();
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+            }
+        }
 
-                if (nextMinTicks.HasValue)
-                    waitTicks = nextMinTicks.Value - currentTicks;
+        /// <summary>
+        /// Returns tick count from current moment to the next action,
+        /// or <c>-1</c> if actions count is <c>0</c>
+        /// </summary>
+        internal virtual long ThreadLoopBody()
+        {
+            ProcessPendingActions();
+
+            long ticksToNextFire = -1;
+            var count = _actions.Count;
+            if (count == 0)
+                return ticksToNextFire;
+
+            int i = 0;
+            var currentTicks = _time.UtcNow.UtcTicks;
+
+            for (; i < count; ++i)
+            {
+                var (key, ticks, action) = _actions[i];
+                // if this action ticks in the future
+                if (currentTicks < ticks)
+                {
+                    ticksToNextFire = ticks - currentTicks;
+                    break;
+                }
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    // ToDo: add a better logging here
+                    Debug.WriteLine($"Action of ({key}, {ticks}) throws exception: {ex}");
+                }
             }
 
-            return waitTicks;
+            // deleting the actions that have already been fired (actions is sorted list, so this is correct)
+            if (i > 0)
+                _actions.RemoveRange(0, i);
+
+            return ticksToNextFire;
+
+            void ProcessPendingActions()
+            {
+                if (_cancellationTokenSource.Token.IsCancellationRequested)
+                    return;
+
+                _lock.Wait(_cancellationTokenSource.Token);
+                try
+                {
+                    if (_pendingActions.Count > 0)
+                    {
+                        _actions.AddRange(_pendingActions);
+                        _pendingActions.Clear();
+                        _wakeupEvent.Reset();
+                    }
+                }
+                finally
+                {
+                    _lock.Release();
+                }
+                _actions.Sort(_comparer);
+            }
         }
 
         public async ValueTask EnqueueAsync(string key, long ticks, Action action, CancellationToken cancellationToken = default)
@@ -119,7 +163,7 @@ namespace Lokman
             if (_isDisposed)
                 ThrowHelper.ObjectDisposedException(nameof(ExpirationQueue));
 
-            await _pendingLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 _pendingActions.Add((key, ticks, action));
@@ -127,7 +171,7 @@ namespace Lokman
             }
             finally
             {
-                _pendingLock.Release();
+                _lock.Release();
             }
         }
 
@@ -139,7 +183,6 @@ namespace Lokman
             throw new NotImplementedException();
         }
 
-
         public ValueTask UpdateExpirationAsync(string key, long ticks, CancellationToken cancellationToken = default)
         {
             if (_isDisposed)
@@ -150,22 +193,21 @@ namespace Lokman
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_isDisposed)
-            {
-                if (disposing)
-                {
-                    _wakeupEvent?.Dispose();
-                }
-                _wakeupEvent = null!;
-                if (!_cancellationTokenSource.IsCancellationRequested)
-                    _cancellationTokenSource.Cancel();
-                _isDisposed = true;
-            }
-        }
+            if (_isDisposed)
+                return;
 
-        ~ExpirationQueue()
-        {
-            Dispose(disposing: false);
+            if (disposing)
+            {
+                _wakeupEvent.Dispose();
+                _lock.Dispose();
+            }
+
+            // we want to break the loop in the worker thread if we're called from the finalizer
+            if (!_cancellationTokenSource.IsCancellationRequested)
+                _cancellationTokenSource.Cancel();
+
+            _cancellationTokenSource.Dispose();
+            _isDisposed = true;
         }
 
         public void Dispose()
@@ -174,8 +216,11 @@ namespace Lokman
             GC.SuppressFinalize(this);
         }
 
-        // for testing
+        ~ExpirationQueue() => Dispose(disposing: false);
 
-        protected internal virtual void SetWakeUpEvent() => _wakeupEvent.Set();
+        // for testing
+        internal virtual void SetWakeUpEvent() => _wakeupEvent.Set();
+        internal virtual void SpinWait(int iterations) => Thread.SpinWait(iterations);
+        internal virtual void WaitWithWakeup(TimeSpan interval) => _wakeupEvent.Wait(interval, _cancellationTokenSource.Token);
     }
 }
