@@ -48,6 +48,58 @@ namespace Lokman.Tests
         }
 
         [Fact]
+        public async Task UpdateExpirationAsync_Should_SetWakeUpEvent()
+        {
+            var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
+            var time = Mock.Of<ITime>(t => t.UtcNow == moment);
+
+            var queue = new Mock<ExpirationQueue>(time, false) {
+                CallBase = true,
+            };
+
+            queue.Object._actions.Add(("foo", 100, () => { }
+            ));
+            await queue.Object.UpdateExpirationAsync("foo", 200).ConfigureAwait(false);
+
+            queue.Verify(q => q.SetWakeUpEvent(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DequeueAsync_ShouldNot_SetWakeUpEvent()
+        {
+            var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
+            var time = Mock.Of<ITime>(t => t.UtcNow == moment);
+
+            var queue = new Mock<ExpirationQueue>(time, false) {
+                CallBase = true,
+            };
+            queue.Object._actions.Add(("foo", 100, () => { }
+            ));
+
+            await queue.Object.DequeueAsync("foo").ConfigureAwait(false);
+
+            queue.Verify(q => q.SetWakeUpEvent(), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateExpirationAsync_Should_ChangeTicksValueAfterProcessSets()
+        {
+            var moment = new DateTimeOffset(0, TimeSpan.Zero);
+            var time = Mock.Of<ITime>(t => t.UtcNow == moment);
+
+            using var queue = new ExpirationQueue(time, false);
+
+            queue._actions.Add(("foo", 100, () => { }
+            ));
+
+            await queue.UpdateExpirationAsync("Foo", 200).ConfigureAwait(false);
+            queue.ThreadLoopBody();
+
+            Assert.Single(queue._actions);
+            Assert.Equal(200, queue._actions[0].Ticks);
+        }
+
+        [Fact]
         public async Task EnqueueAsync_Should_ThrowIfObjectIsDisposed()
         {
             var queue = new ExpirationQueue(Mock.Of<ITime>(), runThread: false);
@@ -113,7 +165,7 @@ namespace Lokman.Tests
             }));
 
             queue.Setup(q => q.SpinWait(It.IsAny<int>())).Callback((int spinWaitIterations) => {
-                _logger.WriteLine($"SpinWait {spinWaitIterations} iterations ~ {(spinWaitIterations / 3)} ticks");
+                _logger.WriteLine($"SpinWait {spinWaitIterations} iterations ~ {spinWaitIterations / 3} ticks");
                 timeSequence.Enqueue(prevTicks + (spinWaitIterations / 3));
                 if (0 > --iterations)
                     throw new TaskCanceledException();
@@ -175,7 +227,7 @@ namespace Lokman.Tests
         public static IEnumerable<object[]> ThreadEntryPoint_Input()
         {
             var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
-            var queue = new ExpirationQueue(Mock.Of<ITime>(), false);
+            using var queue = new ExpirationQueue(Mock.Of<ITime>(), false);
             return new List<object[]> {
                 new object[]{ moment,  queue.SpinWaitMaxTicksThreshold - 1, true },
                 new object[]{ moment,  queue.SpinWaitMaxTicksThreshold, true },

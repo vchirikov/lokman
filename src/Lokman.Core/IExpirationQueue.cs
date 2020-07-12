@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,23 +38,31 @@ namespace Lokman
         private readonly CancellationTokenSource _cancellationTokenSource;
         private bool _isDisposed;
 
-        private readonly List<(string Key, long Ticks, Action Action)> _actions
-            = new List<(string Key, long Ticks, Action Action)>();
+        /// I think <see cref="List{T}"/> + <see cref="SemaphoreSlim"/> will be better
+        /// than a <see cref="System.Collections.Concurrent.ConcurrentBag{T}"/> but maybe we need prove it with benchmark
+        internal readonly List<ExpirationRecord> _actions = new List<ExpirationRecord>();
+        private readonly List<ExpirationRecord> _enqueueSet = new List<ExpirationRecord>();
+        private readonly Dictionary<string, long> _updateSet = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _deleteSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        private readonly List<(string Key, long Ticks, Action Action)> _pendingActions
-            = new List<(string Key, long Ticks, Action Action)>();
+        private readonly SemaphoreSlim _enqueueLock = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _updateLock = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _deleteLock = new SemaphoreSlim(1, 1);
 
-        private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
         private readonly ManualResetEventSlim _wakeupEvent = new ManualResetEventSlim(false);
 
-        private static readonly Comparer<(string Key, long Ticks, Action Action)> _comparer
-            = Comparer<(string Key, long Ticks, Action Action)>.Create((t1, t2) => unchecked((int)(t1.Ticks - t2.Ticks)));
+        private static readonly Comparer<ExpirationRecord> _ticksComparer
+            = Comparer<ExpirationRecord>.Create((t1, t2) => unchecked((int)(t1.Ticks - t2.Ticks)));
+
+        private readonly Predicate<ExpirationRecord> _cachedDeletePredicate;
 
         // for testing
         internal ExpirationQueue(ITime time, bool runThread)
         {
             _time = time;
             _cancellationTokenSource = new CancellationTokenSource();
+            _cachedDeletePredicate = tuple => _deleteSet.Any(keyToDelete => string.Equals(keyToDelete, tuple.Key, StringComparison.OrdinalIgnoreCase));
+
             if (runThread)
             {
                 _workerThread = new Thread(ThreadEntryPoint) {
@@ -99,7 +109,7 @@ namespace Lokman
         /// </summary>
         internal virtual long ThreadLoopBody()
         {
-            ProcessPendingActions();
+            ProcessSets();
 
             long ticksToNextFire = -1;
             var count = _actions.Count;
@@ -135,26 +145,60 @@ namespace Lokman
 
             return ticksToNextFire;
 
-            void ProcessPendingActions()
+            void ProcessSets()
             {
                 if (_cancellationTokenSource.Token.IsCancellationRequested)
                     return;
 
-                _lock.Wait(_cancellationTokenSource.Token);
+                _enqueueLock.Wait(_cancellationTokenSource.Token);
                 try
                 {
-                    if (_pendingActions.Count > 0)
+                    if (_enqueueSet.Count > 0)
                     {
-                        _actions.AddRange(_pendingActions);
-                        _pendingActions.Clear();
+                        _actions.AddRange(_enqueueSet);
+                        _enqueueSet.Clear();
                         _wakeupEvent.Reset();
                     }
                 }
                 finally
                 {
-                    _lock.Release();
+                    _enqueueLock.Release();
                 }
-                _actions.Sort(_comparer);
+
+                _deleteLock.Wait(_cancellationTokenSource.Token);
+                try
+                {
+                    _actions.RemoveAll(_cachedDeletePredicate);
+                }
+                finally
+                {
+                    _deleteLock.Release();
+                }
+
+                _updateLock.Wait(_cancellationTokenSource.Token);
+                try
+                {
+                    if (_updateSet.Count > 0)
+                    {
+                        foreach (var (key, newTicks) in _updateSet)
+                        {
+                            for (int j = 0; j < _actions.Count; j++)
+                            {
+                                var item = _actions[j];
+                                if (!string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+                                    continue;
+                                item.Ticks = newTicks;
+                            }
+                        }
+                        _updateSet.Clear();
+                        _wakeupEvent.Reset();
+                    }
+                }
+                finally
+                {
+                    _updateLock.Release();
+                }
+                _actions.Sort(_ticksComparer);
             }
         }
 
@@ -163,32 +207,49 @@ namespace Lokman
             if (_isDisposed)
                 ThrowHelper.ObjectDisposedException(nameof(ExpirationQueue));
 
-            await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await _enqueueLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                _pendingActions.Add((key, ticks, action));
+                _enqueueSet.Add((key, ticks, action));
                 SetWakeUpEvent();
             }
             finally
             {
-                _lock.Release();
+                _enqueueLock.Release();
             }
         }
 
-        public ValueTask DequeueAsync(string key, CancellationToken cancellationToken = default)
+        public async ValueTask DequeueAsync(string key, CancellationToken cancellationToken = default)
         {
             if (_isDisposed)
                 ThrowHelper.ObjectDisposedException(nameof(ExpirationQueue));
 
-            throw new NotImplementedException();
+            await _deleteLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _deleteSet.Add(key);
+            }
+            finally
+            {
+                _deleteLock.Release();
+            }
         }
 
-        public ValueTask UpdateExpirationAsync(string key, long ticks, CancellationToken cancellationToken = default)
+        public async ValueTask UpdateExpirationAsync(string key, long ticks, CancellationToken cancellationToken = default)
         {
             if (_isDisposed)
                 ThrowHelper.ObjectDisposedException(nameof(ExpirationQueue));
 
-            throw new NotImplementedException();
+            await _updateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _updateSet[key] = ticks;
+                SetWakeUpEvent();
+            }
+            finally
+            {
+                _updateLock.Release();
+            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -199,7 +260,7 @@ namespace Lokman
             if (disposing)
             {
                 _wakeupEvent.Dispose();
-                _lock.Dispose();
+                _enqueueLock.Dispose();
             }
 
             // we want to break the loop in the worker thread if we're called from the finalizer
@@ -222,5 +283,23 @@ namespace Lokman
         internal virtual void SetWakeUpEvent() => _wakeupEvent.Set();
         internal virtual void SpinWait(int iterations) => Thread.SpinWait(iterations);
         internal virtual void WaitWithWakeup(TimeSpan interval) => _wakeupEvent.Wait(interval, _cancellationTokenSource.Token);
+
+        internal class ExpirationRecord : IComparable<ExpirationRecord>, IEquatable<ExpirationRecord>, IComparable
+        {
+            public string Key;
+            public long Ticks;
+            public Action Action;
+
+            public static implicit operator ExpirationRecord((string Key, long Ticks, Action Action) value)
+                => new ExpirationRecord(value.Key, value.Ticks, value.Action);
+            public ExpirationRecord(string key, long ticks, Action action) => (Key, Ticks, Action) = (key, ticks, action);
+            public int CompareTo(ExpirationRecord? record) => Ticks.CompareTo(record);
+            public int CompareTo(object? obj) => CompareTo(obj as ExpirationRecord);
+            public void Deconstruct(out string key, out long ticks, out Action action) => (key, ticks, action) = (Key, Ticks, Action);
+            public override bool Equals(object? obj) => Equals(obj as ExpirationRecord);
+            public bool Equals([AllowNull] ExpirationRecord other) => other != null && Key == other.Key && Ticks == other.Ticks;
+            public override int GetHashCode() => HashCode.Combine(Key, Ticks);
+            public override string ToString() => $"{Key ?? "null"} - {Ticks}";
+        }
     }
 }

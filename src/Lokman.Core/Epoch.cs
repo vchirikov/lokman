@@ -70,7 +70,6 @@ namespace Lokman
             + "] "
             + Index.ToString(CultureInfo.InvariantCulture);
 
-
         public static bool operator ==(Epoch left, Epoch right) => left.Equals(right);
 
         public static bool operator !=(Epoch left, Epoch right) => !left.Equals(right);
