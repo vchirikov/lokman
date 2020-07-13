@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Grpc.HttpApi" />
+    <PackageReference Include="Microsoft.AspNetCore.Grpc.Swagger" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lokman.Core\Lokman.Core.csproj" />
+  </ItemGroup>
+
+</Project>

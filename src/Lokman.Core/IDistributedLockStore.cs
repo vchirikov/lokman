@@ -11,18 +11,17 @@ namespace Lokman
         ValueTask<Epoch> AcquireAsync(string key, long expiration, CancellationToken cancellationToken = default);
         ValueTask<Epoch> SetExpirationAsync(string key, long index, long expiration, CancellationToken cancellationToken = default);
         ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default);
-        ValueTask CollectGarbageAsync(CancellationToken cancellationToken = default);
     }
 
-    public class DistributedLockStore : IDistributedLockStore
+    public class DistributedLockStore : IDistributedLockStore, IDisposable
     {
         /// <summary>
         /// Increasing store state counter
         /// </summary>
         private long _epoch;
-
+        private bool _isDisposed;
         private readonly ITime _time;
-
+        private readonly IDistributedLockStoreCleanupStrategy _cleanupStrategy;
         private readonly IExpirationQueue _expirationQueue;
 
         internal readonly ConcurrentDictionary<string, SemaphoreSlim> _locks
@@ -34,16 +33,21 @@ namespace Lokman
         private static readonly Func<string, SemaphoreSlim> _cachedAddFactory
             = _ => new SemaphoreSlim(1, 1);
 
-        public DistributedLockStore(IExpirationQueue expirationQueue) : this(expirationQueue, SystemTime.Instance) { }
+        public DistributedLockStore(IExpirationQueue expirationQueue) : this(NoOpDistributedLockStoreCleanupStrategy.Instance, expirationQueue, SystemTime.Instance) { }
 
-        internal DistributedLockStore(IExpirationQueue expirationQueue, ITime time)
+        public DistributedLockStore(IDistributedLockStoreCleanupStrategy cleanupStrategy, IExpirationQueue expirationQueue) : this(cleanupStrategy, expirationQueue, SystemTime.Instance) { }
+
+        internal DistributedLockStore(IDistributedLockStoreCleanupStrategy cleanupStrategy, IExpirationQueue expirationQueue, ITime time)
         {
+            _cleanupStrategy = cleanupStrategy;
             _expirationQueue = expirationQueue;
             _time = time;
         }
 
         public async ValueTask<Epoch> AcquireAsync(string key, long expiration, CancellationToken cancellationToken = default)
         {
+            await _cleanupStrategy.CleanupAsync(this, cancellationToken).ConfigureAwait(false);
+
             var semaphore = _locks.GetOrAdd(key, _cachedAddFactory);
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -91,12 +95,34 @@ namespace Lokman
             return CurrentEpoch();
         }
 
-        public ValueTask CollectGarbageAsync(CancellationToken cancellationToken = default)
+        protected virtual void Dispose(bool disposing)
         {
-            throw new NotImplementedException();
-        }
-        // for testing
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    CallDispose(_expirationQueue);
+                    CallDispose(_cleanupStrategy);
+                }
 
+                _isDisposed = true;
+            }
+            static void CallDispose(object obj)
+            {
+                if (obj is IDisposable disposable)
+                    disposable.Dispose();
+                else if (obj is IAsyncDisposable asyncDisposable)
+                    asyncDisposable.DisposeAsync();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        // for testing
         protected virtual internal void SaveEpoch(string key, Epoch result)
             => _lockEpochs[key] = result.Index;
 

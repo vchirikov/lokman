@@ -34,6 +34,21 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lokman.Core", "src\Lokman.C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lokman.Tests", "tests\Lokman.Tests\Lokman.Tests.csproj", "{DE878400-A55F-4EB5-A9F7-F68BBB975D94}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lokman.Server", "src\Lokman.Server\Lokman.Server.csproj", "{7F4762E2-643E-42AC-8724-B3F71C213716}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lokman", "src\Lokman\Lokman.csproj", "{75E67A2A-2A4D-451A-8AA0-1F292F818E58}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Protos", "Protos", "{3618D9F4-F60C-4506-8E83-D6C11040BEA1}"
+	ProjectSection(SolutionItems) = preProject
+		src\Protos\lokman.proto = src\Protos\lokman.proto
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "google", "google", "{C9F37818-E60A-4ABC-A27A-7CC7EC692F63}"
+	ProjectSection(SolutionItems) = preProject
+		src\Protos\google\api\annotations.proto = src\Protos\google\api\annotations.proto
+		src\Protos\google\api\http.proto = src\Protos\google\api\http.proto
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -78,6 +93,30 @@ Global
 		{DE878400-A55F-4EB5-A9F7-F68BBB975D94}.Release|x64.Build.0 = Release|Any CPU
 		{DE878400-A55F-4EB5-A9F7-F68BBB975D94}.Release|x86.ActiveCfg = Release|Any CPU
 		{DE878400-A55F-4EB5-A9F7-F68BBB975D94}.Release|x86.Build.0 = Release|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Debug|x64.Build.0 = Debug|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Debug|x86.Build.0 = Debug|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Release|x64.ActiveCfg = Release|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Release|x64.Build.0 = Release|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Release|x86.ActiveCfg = Release|Any CPU
+		{7F4762E2-643E-42AC-8724-B3F71C213716}.Release|x86.Build.0 = Release|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Debug|x64.Build.0 = Debug|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Debug|x86.Build.0 = Debug|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Release|x64.ActiveCfg = Release|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Release|x64.Build.0 = Release|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Release|x86.ActiveCfg = Release|Any CPU
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -86,6 +125,10 @@ Global
 		{A6F16DB4-F385-4FA0-99DF-B9EA6B9C27B6} = {44F96530-40F8-4C88-B249-40356B839BFB}
 		{EE0C4BDA-C3C3-46A8-8A2C-C0FC20970EA6} = {F49C6930-99C1-4B74-B9A7-7A9A14475811}
 		{DE878400-A55F-4EB5-A9F7-F68BBB975D94} = {19511C34-0F11-4159-BF83-8853D92A2A7B}
+		{7F4762E2-643E-42AC-8724-B3F71C213716} = {F49C6930-99C1-4B74-B9A7-7A9A14475811}
+		{75E67A2A-2A4D-451A-8AA0-1F292F818E58} = {F49C6930-99C1-4B74-B9A7-7A9A14475811}
+		{3618D9F4-F60C-4506-8E83-D6C11040BEA1} = {F49C6930-99C1-4B74-B9A7-7A9A14475811}
+		{C9F37818-E60A-4ABC-A27A-7CC7EC692F63} = {3618D9F4-F60C-4506-8E83-D6C11040BEA1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A490DB75-E13C-43B8-B3EC-2732CF0FC154}

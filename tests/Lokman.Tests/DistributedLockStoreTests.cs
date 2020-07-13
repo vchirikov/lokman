@@ -11,11 +11,23 @@ namespace Lokman.Tests
     public class DistributedLockStoreTests
     {
         [Fact]
+        public async Task AcquireAsync_Should_CallCleanupAsync()
+        {
+            var time = Mock.Of<ITime>(t => t.UtcNow == DateTimeOffset.Now);
+            var cleanupStrategy = new Mock<IDistributedLockStoreCleanupStrategy>();
+            using var store = new DistributedLockStore(cleanupStrategy.Object, Mock.Of<IExpirationQueue>(), time);
+
+            await store.AcquireAsync("foo", 1337, default).ConfigureAwait(false);
+
+            cleanupStrategy.Verify(c => c.CleanupAsync(It.IsAny<IDistributedLockStore>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task AcquireAsync_Should_EqueueAction()
         {
             var time = Mock.Of<ITime>(t => t.UtcNow == DateTimeOffset.Now);
             var queue = new Mock<IExpirationQueue>();
-            var store = new DistributedLockStore(queue.Object, time);
+            using var store = new DistributedLockStore(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue.Object, time);
 
             await store.AcquireAsync("foo", 1337, default).ConfigureAwait(false);
 
@@ -28,7 +40,7 @@ namespace Lokman.Tests
             var time = Mock.Of<ITime>(t => t.UtcNow == DateTimeOffset.Now);
             var queue = Mock.Of<IExpirationQueue>();
 
-            var store = new Mock<DistributedLockStore>(queue, time) {
+            var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
 
@@ -42,7 +54,7 @@ namespace Lokman.Tests
         public void NextEpoch_Should_IncrementEpoch()
         {
             var time = Mock.Of<ITime>(t => t.UtcNow == new DateTimeOffset(2000, 1, 1, 0, 0, 0, default));
-            var store = new DistributedLockStore(Mock.Of<IExpirationQueue>(), time);
+            using var store = new DistributedLockStore(Mock.Of<IDistributedLockStoreCleanupStrategy>(), Mock.Of<IExpirationQueue>(), time);
 
             var before = store.CurrentEpoch();
             var result = store.NextEpoch();
@@ -60,7 +72,7 @@ namespace Lokman.Tests
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
             var queue = Mock.Of<IExpirationQueue>();
 
-            var store = new Mock<DistributedLockStore>(queue, time) {
+            var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
             var savedEpoch = new Epoch(1337, moment.UtcTicks);
@@ -80,7 +92,7 @@ namespace Lokman.Tests
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
             var queue = new Mock<IExpirationQueue>();
 
-            var store = new Mock<DistributedLockStore>(queue.Object, time) {
+            var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue.Object, time) {
                 CallBase = true,
             };
             var savedEpoch = new Epoch(1337, moment.UtcTicks);
@@ -99,7 +111,7 @@ namespace Lokman.Tests
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
             var queue = Mock.Of<IExpirationQueue>();
 
-            var store = new Mock<DistributedLockStore>(queue, time) {
+            var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
             var savedEpoch = new Epoch(1337, moment.UtcTicks);
@@ -115,7 +127,7 @@ namespace Lokman.Tests
         [Fact]
         public async Task ReleaseAsync_Should_ThrowKeyNotFoundException_If_LockIsNotFound()
         {
-            var store = new DistributedLockStore(Mock.Of<IExpirationQueue>(), Mock.Of<ITime>());
+            using var store = new DistributedLockStore(Mock.Of<IDistributedLockStoreCleanupStrategy>(), Mock.Of<IExpirationQueue>(), Mock.Of<ITime>());
             await Assert.ThrowsAsync<KeyNotFoundException>(async () => {
                 await store.ReleaseAsync("foo", 0, default).ConfigureAwait(false);
             }).ConfigureAwait(false);
@@ -128,7 +140,7 @@ namespace Lokman.Tests
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
             var queue = Mock.Of<IExpirationQueue>();
 
-            var store = new Mock<DistributedLockStore>(queue, time) {
+            var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
             var savedEpoch = new Epoch(1337, moment.UtcTicks);
@@ -148,7 +160,7 @@ namespace Lokman.Tests
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
             var queue = new Mock<IExpirationQueue>();
 
-            var store = new Mock<DistributedLockStore>(queue.Object, time) {
+            var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue.Object, time) {
                 CallBase = true,
             };
             var savedEpoch = new Epoch(1337, moment.UtcTicks);
@@ -172,7 +184,7 @@ namespace Lokman.Tests
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
             var queue = Mock.Of<IExpirationQueue>();
 
-            var store = new Mock<DistributedLockStore>(queue, time) {
+            var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
             var savedEpoch = new Epoch(1337, moment.UtcTicks);
@@ -188,7 +200,7 @@ namespace Lokman.Tests
         [Fact]
         public async Task SetExpirationAsync_Should_ThrowKeyNotFoundException_If_LockIsNotFound()
         {
-            var store = new DistributedLockStore(Mock.Of<IExpirationQueue>(), Mock.Of<ITime>());
+            using var store = new DistributedLockStore(Mock.Of<IDistributedLockStoreCleanupStrategy>(), Mock.Of<IExpirationQueue>(), Mock.Of<ITime>());
             await Assert.ThrowsAsync<KeyNotFoundException>(async () => {
                 await store.SetExpirationAsync("foo", 0, 0, default).ConfigureAwait(false);
             }).ConfigureAwait(false);

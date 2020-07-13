@@ -1,0 +1,103 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.ObjectPool;
+using Microsoft.Extensions.Primitives;
+
+namespace Lokman
+{
+    public class DistributedLockManagerConfig
+    {
+        public TimeSpan DefaultDuration { get; set; } = TimeSpan.FromSeconds(0);
+    }
+
+    /// <summary>
+    /// Factory that creates a <see cref="IDistributedLock"/> associated with some resources
+    /// </summary>
+    public interface IDistributedLockManager : IAsyncDisposable
+    {
+        /// <summary>
+        /// Creates a lock <see cref="IDistributedLock"/> which can try to lock <paramref name="resources"/>
+        /// for <paramref name="duration"/>
+        /// </summary>
+        /// <param name="resources">The list of requested resources</param>
+        /// <param name="duration">The requested lease time</param>
+        /// <returns><see cref="IDistributedLock"/> associated <paramref name="resources"/> some resources</returns>
+        IDistributedLock Create(StringValues resources, TimeSpan? duration = null);
+
+        /// <summary>
+        /// Returns lock object <paramref name="distributedLock"/> to the pool
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        ValueTask ReturnAsync(IDistributedLock distributedLock);
+    }
+
+    /// <summary>
+    /// Connection pool abstraction
+    /// </summary>
+    public class DistributedLockManager : IDistributedLockManager
+    {
+        private readonly DistributedLockManagerConfig _config;
+        private readonly ObjectPool<DistributedLock> _lockPool;
+
+        /// <summary>
+        /// ctor
+        /// </summary>
+        /// <param name="config"></param>
+        /// <param name="poolProvider"> <see cref="LeakTrackingObjectPoolProvider"/> for example or <see cref="DefaultObjectPoolProvider"/> </param>
+        public DistributedLockManager(DistributedLockManagerConfig config, ObjectPoolProvider poolProvider)
+        {
+            _config = config;
+            _lockPool = poolProvider.Create(new DistributedLockPooledObjectPolicy(this, poolProvider));
+        }
+
+        /// <inheritdoc />
+        public IDistributedLock Create(StringValues resources, TimeSpan? duration = null)
+        {
+            var lockObj = _lockPool.Get();
+            // ToDo: [Bench] [CodeQuality] Do we need a function call like 'initialize' here?
+            (lockObj._resources, lockObj._duration) = (resources, duration ?? _config.DefaultDuration);
+            return lockObj;
+        }
+
+        /// <inheritdoc />
+        public ValueTask ReturnAsync(IDistributedLock distributedLock)
+        {
+            _lockPool.Return((DistributedLock)distributedLock);
+            return default;
+        }
+
+        public ValueTask DisposeAsync() => default;
+    }
+
+    /// <summary>
+    /// <see href="https://github.com/dotnet/aspnetcore/tree/master/src/ObjectPool/src"/>
+    /// <see cref="DistributedLock"/>
+    /// </summary>
+    internal class DistributedLockPooledObjectPolicy : PooledObjectPolicy<DistributedLock>
+    {
+        private readonly DistributedLockManager _manager;
+        private readonly ObjectPoolProvider _poolProvider;
+
+        public DistributedLockPooledObjectPolicy(DistributedLockManager manager, ObjectPoolProvider poolProvider)
+        {
+            _manager = manager;
+            _poolProvider = poolProvider;
+        }
+
+        public override DistributedLock Create()
+        {
+            // ToDo: [Design] Do we need initialize with some defaults here?
+            return new DistributedLock(_manager, _poolProvider);
+        }
+
+        public override bool Return(DistributedLock obj)
+        {
+            obj.Clear();
+            return true;
+        }
+    }
+}

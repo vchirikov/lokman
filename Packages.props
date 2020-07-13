@@ -1,10 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <MicrosoftExtensionsVersion>3.1.5</MicrosoftExtensionsVersion>
+    <GrpcVersion>2.30.0</GrpcVersion>
+    <GrpcDotNetVersion>2.30.0-pre1</GrpcDotNetVersion>
   </PropertyGroup>
   <ItemGroup Label="nupkg Versions">
+    <PackageReference Update="Microsoft.Extensions.ObjectPool" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageReference Update="Microsoft.Extensions.Primitives" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)" />
+
+    <PackageReference Update="System.IO.Abstractions" Version="12.0.5" />
+    <PackageReference Update="System.Text.Json" Version="4.7.2"/>
+
+    <PackageReference Update="Grpc.AspNetCore" Version="$(GrpcDotNetVersion)" />
+    <PackageReference Update="Grpc.Net.Client" Version="$(GrpcDotNetVersion)" />
+    <PackageReference Update="Grpc.Net.ClientFactory" Version="$(GrpcDotNetVersion)" />
+    <PackageReference Update="Google.Protobuf" Version="3.12.3" />
+    <PackageReference Update="Grpc.Tools" Version="$(GrpcVersion)" PrivateAssets="all" />
+    <!-- for Microsoft.AspNetCore.Grpc.HttpApi https://github.com/protocolbuffers/protobuf/issues/6956  -->
+    <PackageReference Update="Google.Api.CommonProtos" Version="2.1.0" />
+    <PackageReference Update="Microsoft.AspNetCore.Grpc.HttpApi" Version="0.1.0-alpha.20322.1" />
+    <PackageReference Update="Microsoft.AspNetCore.Grpc.Swagger" Version="0.1.0-alpha.20322.1" />
+
+    <!-- test/build/analyzers/versioning libs  -->
     <PackageReference Update="Moq" Version="4.14.5" />
     <PackageReference Update="Moq.Analyzers" Version="0.0.8" />
+    <PackageReference Update="FluentAssertions" Version="5.10.3" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="16.6.1" />
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
