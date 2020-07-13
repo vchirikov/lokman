@@ -53,6 +53,8 @@ namespace Lokman
 
         private readonly Predicate<ExpirationRecord> _cachedDeletePredicate;
 
+        public ExpirationQueue() : this(SystemTime.Instance, runThread: true) { }
+
         // for testing
         internal ExpirationQueue(ITime time, bool runThread)
         {

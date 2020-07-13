@@ -41,6 +41,7 @@ namespace Lokman
     public class DistributedLockManager : IDistributedLockManager
     {
         private readonly DistributedLockManagerConfig _config;
+        private readonly IDistributedLockTransport _transport;
         private readonly ObjectPool<DistributedLock> _lockPool;
 
         /// <summary>
@@ -48,10 +49,12 @@ namespace Lokman
         /// </summary>
         /// <param name="config"></param>
         /// <param name="poolProvider"> <see cref="LeakTrackingObjectPoolProvider"/> for example or <see cref="DefaultObjectPoolProvider"/> </param>
-        public DistributedLockManager(DistributedLockManagerConfig config, ObjectPoolProvider poolProvider)
+        /// <param name="transport">the network transport for example grpc or in-memory implementation</param>
+        public DistributedLockManager(DistributedLockManagerConfig config, ObjectPoolProvider poolProvider, IDistributedLockTransport transport)
         {
             _config = config;
-            _lockPool = poolProvider.Create(new DistributedLockPooledObjectPolicy(this, poolProvider));
+            _transport = transport;
+            _lockPool = poolProvider.Create(new DistributedLockPooledObjectPolicy(this, poolProvider, _transport));
         }
 
         /// <inheritdoc />
@@ -81,17 +84,19 @@ namespace Lokman
     {
         private readonly DistributedLockManager _manager;
         private readonly ObjectPoolProvider _poolProvider;
+        private readonly IDistributedLockTransport _transport;
 
-        public DistributedLockPooledObjectPolicy(DistributedLockManager manager, ObjectPoolProvider poolProvider)
+        public DistributedLockPooledObjectPolicy(DistributedLockManager manager, ObjectPoolProvider poolProvider, IDistributedLockTransport transport)
         {
             _manager = manager;
             _poolProvider = poolProvider;
+            _transport = transport;
         }
 
         public override DistributedLock Create()
         {
             // ToDo: [Design] Do we need initialize with some defaults here?
-            return new DistributedLock(_manager, _poolProvider);
+            return new DistributedLock(_manager, _poolProvider, _transport);
         }
 
         public override bool Return(DistributedLock obj)
