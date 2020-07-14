@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,12 +20,12 @@ namespace Lokman
     /// <inheritdoc cref="IDistributedLockStoreCleanupStrategy"/>
     /// No Operation strategy.
     /// </summary>
-    public class NoOpDistributedLockStoreCleanupStrategy : IDistributedLockStoreCleanupStrategy
+    public sealed class NoOpDistributedLockStoreCleanupStrategy : IDistributedLockStoreCleanupStrategy
     {
         public static NoOpDistributedLockStoreCleanupStrategy Instance { get; } = new NoOpDistributedLockStoreCleanupStrategy();
 
         /// <inheritdoc />
         public ValueTask CleanupAsync(IDistributedLockStore distributedLockStore, CancellationToken cancellationToken = default)
-            => new ValueTask();
+            => default;
     }
 }

@@ -22,12 +22,10 @@ message LockResponse{
 }
 
 service DistributedLockService {
-    rpc Lock(stream LockRequest) returns (stream LockResponse){
-    }
-
-    // this experimental api, with worse perfomance than stream api, but can be used in tests (not in benchmarks)
+    // this experimental api, with worse perfomance than regular grpc api
+    // but can be used in tests/scripts etc (not in benchmarks)
     // https://cloud.google.com/service-infrastructure/docs/service-management/reference/rpc/google.api#google.api.HttpRule
-    rpc RestLock(LockRequest) returns (LockResponse){
+    rpc Lock(LockRequest) returns (LockResponse){
         option (google.api.http) = {
             post: "/v1/lock"
             body: "*"

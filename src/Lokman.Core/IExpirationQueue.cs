@@ -16,7 +16,7 @@ namespace Lokman
         ValueTask UpdateExpirationAsync(string key, long ticks, CancellationToken cancellationToken = default);
     }
 
-    public class ExpirationQueue : IDisposable, IExpirationQueue
+    public class ExpirationQueue : IExpirationQueue, IAsyncDisposable, IDisposable
     {
         /// <summary>
         /// The max ticks between action and current time, when we will use <see cref="Thread.SpinWait(int)"/>
@@ -251,28 +251,34 @@ namespace Lokman
             }
         }
 
+        protected virtual ValueTask DisposeAsyncCore() => default;
+
         protected virtual void Dispose(bool disposing)
         {
-            if (_isDisposed)
-                return;
-
-            if (disposing)
+            if (!_isDisposed)
             {
-                _wakeupEvent.Dispose();
-                _enqueueLock.Dispose();
+                StopThread();
+
+                if (disposing)
+                {
+                    _wakeupEvent.Dispose();
+                    _enqueueLock.Dispose();
+                    _cancellationTokenSource.Dispose();
+                }
+                _isDisposed = true;
             }
-
-            // we want to break the loop in the worker thread if we're called from the finalizer
-            if (!_cancellationTokenSource.IsCancellationRequested)
-                _cancellationTokenSource.Cancel();
-
-            _cancellationTokenSource.Dispose();
-            _isDisposed = true;
         }
 
         public void Dispose()
         {
-            Dispose(disposing: true);
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeAsyncCore().ConfigureAwait(false);
+            Dispose(false);
             GC.SuppressFinalize(this);
         }
 
@@ -282,6 +288,11 @@ namespace Lokman
         internal virtual void SetWakeUpEvent() => _wakeupEvent.Set();
         internal virtual void SpinWait(int iterations) => Thread.SpinWait(iterations);
         internal virtual void WaitWithWakeup(TimeSpan interval) => _wakeupEvent.Wait(interval, _cancellationTokenSource.Token);
+        internal virtual void StopThread()
+        {
+            if (!_cancellationTokenSource.IsCancellationRequested)
+                _cancellationTokenSource.Cancel();
+        }
 
         internal class ExpirationRecord : IComparable<ExpirationRecord>, IEquatable<ExpirationRecord>, IComparable
         {

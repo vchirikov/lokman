@@ -32,8 +32,10 @@ namespace Lokman.Tests
             lockObj.Should().BeEquivalentTo(defaultObj, "'Clear' should clean fields");
         }
 
-        private static DistributedLock CreateLock(IDistributedLockManager mgr = null)
-            => new DistributedLock(mgr ?? Mock.Of<IDistributedLockManager>(),
-                new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider()));
+        private static DistributedLock CreateLock(IDistributedLockManager mgr = null) => new DistributedLock(
+            mgr ?? Mock.Of<IDistributedLockManager>(),
+            new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider()),
+            Mock.Of<IDistributedLockStore>()
+        );
     }
 }

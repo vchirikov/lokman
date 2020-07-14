@@ -13,7 +13,7 @@ namespace Lokman
         ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default);
     }
 
-    public class DistributedLockStore : IDistributedLockStore, IDisposable
+    public class DistributedLockStore : IDistributedLockStore, IAsyncDisposable, IDisposable
     {
         /// <summary>
         /// Increasing store state counter
@@ -95,30 +95,38 @@ namespace Lokman
             return CurrentEpoch();
         }
 
+        protected virtual async ValueTask DisposeAsyncCore()
+        {
+            if (_cleanupStrategy is IAsyncDisposable asyncDisposable1)
+                await asyncDisposable1.DisposeAsync().ConfigureAwait(false);
+
+            if (_expirationQueue is IAsyncDisposable asyncDisposable2)
+                await asyncDisposable2.DisposeAsync().ConfigureAwait(false);
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_isDisposed)
             {
                 if (disposing)
                 {
-                    CallDispose(_expirationQueue);
-                    CallDispose(_cleanupStrategy);
+                    (_cleanupStrategy as IDisposable)?.Dispose();
+                    (_expirationQueue as IDisposable)?.Dispose();
                 }
-
                 _isDisposed = true;
-            }
-            static void CallDispose(object obj)
-            {
-                if (obj is IDisposable disposable)
-                    disposable.Dispose();
-                else if (obj is IAsyncDisposable asyncDisposable)
-                    asyncDisposable.DisposeAsync();
             }
         }
 
         public void Dispose()
         {
             Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeAsyncCore().ConfigureAwait(false);
+            Dispose(disposing: false);
             GC.SuppressFinalize(this);
         }
 

@@ -7,13 +7,14 @@ using System.Threading;
 namespace Lokman
 {
     /// <summary>
-    /// Grpc request processor
+    /// Grpc server-side service
     /// </summary>
-    public class DistributedLockService : Protos.DistributedLockService.DistributedLockServiceBase
+    public class DistributedLockService : Protos.DistributedLockService.DistributedLockServiceBase, IAsyncDisposable, IDisposable
     {
         private readonly IEventLogger<DistributedLockService> _logger;
         private readonly IDistributedLockStore _lockStore;
         private readonly ITime _time;
+        private bool _isDisposed;
 
         public DistributedLockService(IEventLogger<DistributedLockService> logger, IDistributedLockStore lockStore) : this(logger, lockStore, SystemTime.Instance) { }
 
@@ -24,29 +25,7 @@ namespace Lokman
             _time = time;
         }
 
-        public override async Task Lock(
-            IAsyncStreamReader<LockRequest> requestStream,
-            IServerStreamWriter<LockResponse> responseStream,
-            ServerCallContext context)
-        {
-            try
-            {
-                await foreach (var request in requestStream.ReadAllAsync(context.CancellationToken))
-                {
-                    var response = await ProcessAsync(request, context.CancellationToken).ConfigureAwait(false);
-                    await responseStream.WriteAsync(response).ConfigureAwait(false);
-                }
-            }
-            catch (TaskCanceledException ex)
-            {
-                var now = DateTimeOffset.UtcNow;
-                var ticks = now.UtcTicks;
-                _logger.WarningEvent(ex, "LockRequestDropped", new { Ticks = ticks, context.Peer, });
-                throw;
-            }
-        }
-
-        public override Task<LockResponse> RestLock(LockRequest request, ServerCallContext context)
+        public override Task<LockResponse> Lock(LockRequest request, ServerCallContext context)
             => ProcessAsync(request, context.CancellationToken);
 
         public async Task<LockResponse> ProcessAsync(LockRequest request, CancellationToken cancellationToken = default)
@@ -86,6 +65,37 @@ namespace Lokman
                     Ticks = _time.UtcNow.Ticks,
                 };
             }
+        }
+
+        protected virtual async ValueTask DisposeAsyncCore()
+        {
+            if (_lockStore is IAsyncDisposable asyncDisposable1)
+                await asyncDisposable1.DisposeAsync().ConfigureAwait(false);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    (_lockStore as IDisposable)?.Dispose();
+                }
+                _isDisposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeAsyncCore().ConfigureAwait(false);
+            Dispose(disposing: false);
+            GC.SuppressFinalize(this);
         }
     }
 }

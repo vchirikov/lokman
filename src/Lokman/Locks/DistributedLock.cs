@@ -22,7 +22,7 @@ namespace Lokman
 
     public class DistributedLock : IDistributedLock
     {
-        private readonly IDistributedLockTransport _transport;
+        private readonly IDistributedLockStore _store;
         /// <summary>
         /// Ordered list of requested resources
         /// </summary>
@@ -41,12 +41,12 @@ namespace Lokman
         /// </summary>
         /// <param name="distributedLockManager">parent object</param>
         /// <param name="poolProvider"> <see cref="LeakTrackingObjectPoolProvider"/> for example or <see cref="DefaultObjectPoolProvider"/> </param>
-        /// <param name="transport">the network transport for example grpc or in-memory implementation</param>
-        public DistributedLock(IDistributedLockManager distributedLockManager, ObjectPoolProvider poolProvider, IDistributedLockTransport transport)
+        /// <param name="store">the network transport for example grpc or in-memory implementation</param>
+        public DistributedLock(IDistributedLockManager distributedLockManager, ObjectPoolProvider poolProvider, IDistributedLockStore store)
         {
             _manager = distributedLockManager;
             _handlePool = poolProvider.Create(new DistributedLockHandlePooledObjectPolicy(this));
-            _transport = transport;
+            _store = store;
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace Lokman
         public ValueTask<OperationResult<DistributedLockHandle>> TryAcquireAsync(CancellationToken cancellationToken = default)
         {
             var obj = _handlePool.Get();
-            return default;
+            throw new NotImplementedException();
         }
 
         /// <summary>

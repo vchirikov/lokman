@@ -253,6 +253,28 @@ namespace Lokman.Tests
             Assert.True(isEventWaitWithInfinityCalled);
         }
 
+        [Fact]
+        public void Dispose_Should_CallStopThread()
+        {
+            var queue = new Mock<ExpirationQueue>(Mock.Of<ITime>(), false) {
+                CallBase = true,
+            };
+            queue.Object.Dispose();
+
+            queue.Verify(s => s.StopThread(), Times.Once);
+        }
+
+        [Fact]
+        public async ValueTask DisposeAsync_Should_CallStopThread()
+        {
+            var queue = new Mock<ExpirationQueue>(Mock.Of<ITime>(), false) {
+                CallBase = true,
+            };
+            await queue.Object.DisposeAsync().ConfigureAwait(false);
+
+            queue.Verify(s => s.StopThread(), Times.Once);
+        }
+
         [Theory]
         [MemberData(nameof(ThreadEntryPoint_Input))]
         public void ThreadEntryPoint_Should_UseSpinWaitOrWaitOnEvent(DateTimeOffset moment, long threadLoopBodyResult, bool isSpinWaitExpected)

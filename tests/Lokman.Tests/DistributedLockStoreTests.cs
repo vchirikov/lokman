@@ -1,6 +1,5 @@
 using System;
 using System.Threading;
-using System.Linq;
 using Moq;
 using Xunit;
 using System.Threading.Tasks;
@@ -205,5 +204,43 @@ namespace Lokman.Tests
                 await store.SetExpirationAsync("foo", 0, 0, default).ConfigureAwait(false);
             }).ConfigureAwait(false);
         }
+
+
+        [Fact]
+        public void Dispose_Should_CallDisposeOnDependences()
+        {
+            var disposable1 = new Mock<IDisposable>();
+            var disposable2 = new Mock<IDisposable>();
+
+            using (new DistributedLockStore(
+                disposable1.As<IDistributedLockStoreCleanupStrategy>().Object,
+                disposable2.As<IExpirationQueue>().Object,
+                Mock.Of<ITime>()
+            ))
+            { }
+
+            disposable1.Verify(s => s.Dispose(), Times.Once);
+            disposable2.Verify(s => s.Dispose(), Times.Once);
+
+        }
+
+        [Fact]
+        public async Task DisposeAsync_Should_CallDisposeAsyncOnDependences()
+        {
+            var asyncDisposable1 = new Mock<IAsyncDisposable>();
+            var asyncDisposable2 = new Mock<IAsyncDisposable>();
+
+            await using (new DistributedLockStore(
+                asyncDisposable1.As<IDistributedLockStoreCleanupStrategy>().Object,
+                asyncDisposable2.As<IExpirationQueue>().Object,
+                Mock.Of<ITime>()
+            ).ConfigureAwait(false))
+            { }
+
+            asyncDisposable1.Verify(s => s.DisposeAsync(), Times.Once);
+            asyncDisposable2.Verify(s => s.DisposeAsync(), Times.Once);
+        }
+
+
     }
 }

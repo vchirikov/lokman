@@ -41,7 +41,7 @@ namespace Lokman
     public class DistributedLockManager : IDistributedLockManager
     {
         private readonly DistributedLockManagerConfig _config;
-        private readonly IDistributedLockTransport _transport;
+        private readonly IDistributedLockStore _transport;
         private readonly ObjectPool<DistributedLock> _lockPool;
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Lokman
         /// <param name="config"></param>
         /// <param name="poolProvider"> <see cref="LeakTrackingObjectPoolProvider"/> for example or <see cref="DefaultObjectPoolProvider"/> </param>
         /// <param name="transport">the network transport for example grpc or in-memory implementation</param>
-        public DistributedLockManager(DistributedLockManagerConfig config, ObjectPoolProvider poolProvider, IDistributedLockTransport transport)
+        public DistributedLockManager(DistributedLockManagerConfig config, ObjectPoolProvider poolProvider, IDistributedLockStore transport)
         {
             _config = config;
             _transport = transport;
@@ -84,9 +84,9 @@ namespace Lokman
     {
         private readonly DistributedLockManager _manager;
         private readonly ObjectPoolProvider _poolProvider;
-        private readonly IDistributedLockTransport _transport;
+        private readonly IDistributedLockStore _transport;
 
-        public DistributedLockPooledObjectPolicy(DistributedLockManager manager, ObjectPoolProvider poolProvider, IDistributedLockTransport transport)
+        public DistributedLockPooledObjectPolicy(DistributedLockManager manager, ObjectPoolProvider poolProvider, IDistributedLockStore transport)
         {
             _manager = manager;
             _poolProvider = poolProvider;

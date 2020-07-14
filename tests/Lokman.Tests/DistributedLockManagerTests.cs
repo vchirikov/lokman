@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.ObjectPool;
+using Moq;
 using Xunit;
 
 namespace Lokman.Tests
@@ -31,6 +32,6 @@ namespace Lokman.Tests
         }
 
         private static DistributedLockManager CreateManager() => new DistributedLockManager(new DistributedLockManagerConfig(),
-                        new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider()));
+                        new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider()), Mock.Of<IDistributedLockStore>());
     }
 }
