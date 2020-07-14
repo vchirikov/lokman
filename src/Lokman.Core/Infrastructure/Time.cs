@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,6 +14,7 @@ namespace Lokman
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
     }
 
+    [ExcludeFromCodeCoverage]
     internal sealed class SystemTime : ITime
     {
         public static SystemTime Instance = new SystemTime();
