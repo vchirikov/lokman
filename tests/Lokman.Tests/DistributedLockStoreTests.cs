@@ -16,7 +16,7 @@ namespace Lokman.Tests
             var cleanupStrategy = new Mock<IDistributedLockStoreCleanupStrategy>();
             using var store = new DistributedLockStore(cleanupStrategy.Object, Mock.Of<IExpirationQueue>(), time);
 
-            await store.AcquireAsync("foo", 1337, default).ConfigureAwait(false);
+            await store.AcquireAsync("foo", default, default).ConfigureAwait(false);
 
             cleanupStrategy.Verify(c => c.CleanupAsync(It.IsAny<IDistributedLockStore>(), It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -24,17 +24,18 @@ namespace Lokman.Tests
         [Fact]
         public async Task AcquireAsync_Should_EqueueAction()
         {
-            var time = Mock.Of<ITime>(t => t.UtcNow == DateTimeOffset.Now);
+            var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
+            var time = Mock.Of<ITime>(t => t.UtcNow == moment);
             var queue = new Mock<IExpirationQueue>();
             using var store = new DistributedLockStore(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue.Object, time);
 
-            await store.AcquireAsync("foo", 1337, default).ConfigureAwait(false);
+            await store.AcquireAsync("foo", default, default).ConfigureAwait(false);
 
-            queue.Verify(q => q.EnqueueAsync(It.IsAny<string>(), It.Is<long>(x => x == 1337), It.IsAny<Action>(), It.IsAny<CancellationToken>()), Times.Once);
+            queue.Verify(q => q.EnqueueAsync(It.IsAny<string>(), It.Is<long>(x => x == moment.Ticks), It.IsAny<Action>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task AcquireAsync_Should_CallNextEpochAndSaveEpoch()
+        public async Task AcquireAsync_Should_CallNextTokenAndSaveToken()
         {
             var time = Mock.Of<ITime>(t => t.UtcNow == DateTimeOffset.Now);
             var queue = Mock.Of<IExpirationQueue>();
@@ -43,29 +44,29 @@ namespace Lokman.Tests
                 CallBase = true,
             };
 
-            await store.Object.AcquireAsync("foo", 1337, default).ConfigureAwait(false);
+            await store.Object.AcquireAsync("foo", default, default).ConfigureAwait(false);
 
-            store.Verify(x => x.NextEpoch(), Times.Once);
-            store.Verify(x => x.SaveEpoch(It.Is<string>(x => x == "foo"), It.IsAny<Epoch>()), Times.Once);
+            store.Verify(x => x.NextToken(), Times.Once);
+            store.Verify(x => x.SaveToken(It.Is<string>(x => x == "foo"), It.IsAny<long>()), Times.Once);
         }
 
         [Fact]
-        public void NextEpoch_Should_IncrementEpoch()
+        public void NextEpoch_Should_IncrementToken()
         {
             var time = Mock.Of<ITime>(t => t.UtcNow == new DateTimeOffset(2000, 1, 1, 0, 0, 0, default));
             using var store = new DistributedLockStore(Mock.Of<IDistributedLockStoreCleanupStrategy>(), Mock.Of<IExpirationQueue>(), time);
 
-            var before = store.CurrentEpoch();
-            var result = store.NextEpoch();
-            var after = store.CurrentEpoch();
+            var before = store.CurrentToken();
+            var result = store.NextToken();
+            var after = store.CurrentToken();
 
             Assert.NotEqual(before, result);
             Assert.Equal(result, after);
-            Assert.True(after.Index > before.Index);
+            Assert.True(after > before);
         }
 
         [Fact]
-        public async Task ReleaseAsync_Should_CallNextEpoch_If_IndexEqualsSavedIndex()
+        public async Task ReleaseAsync_Should_CallNextToken_If_TokenEqualsSavedToken()
         {
             var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
@@ -74,18 +75,18 @@ namespace Lokman.Tests
             var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
-            var savedEpoch = new Epoch(1337, moment.UtcTicks);
+            var savedToken = 1337;
             store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveEpoch("foo", savedEpoch);
+            store.Object.SaveToken("foo", savedToken);
 
             await store.Object.ReleaseAsync("foo", 1337, default).ConfigureAwait(false);
 
-            store.Verify(x => x.NextEpoch(), Times.Once);
-            store.Verify(x => x.CurrentEpoch(), Times.Never);
+            store.Verify(x => x.NextToken(), Times.Once);
+            store.Verify(x => x.CurrentToken(), Times.Never);
         }
 
         [Fact]
-        public async Task ReleaseAsync_Should_DequeueAction_If_IndexEqualsSavedIndex()
+        public async Task ReleaseAsync_Should_DequeueAction_If_TokenEqualsSavedToken()
         {
             var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
@@ -94,9 +95,9 @@ namespace Lokman.Tests
             var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue.Object, time) {
                 CallBase = true,
             };
-            var savedEpoch = new Epoch(1337, moment.UtcTicks);
+            var savedToken = 1337;
             store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveEpoch("foo", savedEpoch);
+            store.Object.SaveToken("foo", savedToken);
 
             await store.Object.ReleaseAsync("foo", 1337, default).ConfigureAwait(false);
 
@@ -104,7 +105,7 @@ namespace Lokman.Tests
         }
 
         [Fact]
-        public async Task ReleaseAsync_Should_ReturnCurrentEpoch_If_IndexNotEqualsSavedIndex()
+        public async Task ReleaseAsync_Should_ReturnCurrentToken_If_TokenNotEqualsSavedToken()
         {
             var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
@@ -113,14 +114,14 @@ namespace Lokman.Tests
             var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
-            var savedEpoch = new Epoch(1337, moment.UtcTicks);
+            var savedToken = 1337;
             store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveEpoch("foo", savedEpoch);
+            store.Object.SaveToken("foo", savedToken);
 
             await store.Object.ReleaseAsync("foo", 31337, default).ConfigureAwait(false);
 
-            store.Verify(x => x.NextEpoch(), Times.Never);
-            store.Verify(x => x.CurrentEpoch(), Times.Once);
+            store.Verify(x => x.NextToken(), Times.Never);
+            store.Verify(x => x.CurrentToken(), Times.Once);
         }
 
         [Fact]
@@ -133,7 +134,7 @@ namespace Lokman.Tests
         }
 
         [Fact]
-        public async Task SetExpirationAsync_Should_CallNextEpoch_If_IndexEqualsSavedIndex()
+        public async Task UpdateAsync_Should_CallNextToken_If_IndexEqualsSavedToken()
         {
             var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
@@ -142,18 +143,18 @@ namespace Lokman.Tests
             var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
-            var savedEpoch = new Epoch(1337, moment.UtcTicks);
+            var savedToken = 1337;
             store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveEpoch("foo", savedEpoch);
+            store.Object.SaveToken("foo", savedToken);
 
-            await store.Object.SetExpirationAsync("foo", 1337, 31337, default).ConfigureAwait(false);
+            await store.Object.UpdateAsync("foo", 1337, TimeSpan.FromTicks(31337), default).ConfigureAwait(false);
 
-            store.Verify(x => x.NextEpoch(), Times.Once);
-            store.Verify(x => x.CurrentEpoch(), Times.Never);
+            store.Verify(x => x.NextToken(), Times.Once);
+            store.Verify(x => x.CurrentToken(), Times.Never);
         }
 
         [Fact]
-        public async Task SetExpirationAsync_Should_UpdateExpirationAsync_If_IndexEqualsSavedIndex()
+        public async Task UpdateAsync_Should_UpdateExpirationAsync_If_IndexEqualsSavedToken()
         {
             var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
@@ -162,22 +163,22 @@ namespace Lokman.Tests
             var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue.Object, time) {
                 CallBase = true,
             };
-            var savedEpoch = new Epoch(1337, moment.UtcTicks);
+            var savedToken = 1337;
             store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveEpoch("foo", savedEpoch);
+            store.Object.SaveToken("foo", savedToken);
 
-            await store.Object.SetExpirationAsync("foo", 1337, 31337, default).ConfigureAwait(false);
+            await store.Object.UpdateAsync("foo", 1337, TimeSpan.FromTicks(31337), default).ConfigureAwait(false);
 
             queue.Verify(q => q.UpdateExpirationAsync(
                 It.Is<string>(x => x == "foo"),
-                It.Is<long>(x => x == 31337),
+                It.Is<long>(x => x == 31337 + moment.Ticks),
                 It.IsAny<CancellationToken>())
             , Times.Once);
 
         }
 
         [Fact]
-        public async Task SetExpirationAsync_Should_ReturnCurrentEpoch_If_IndexNotEqualsSavedIndex()
+        public async Task UpdateAsync_Should_ReturnCurrentToken_If_IndexNotEqualsSavedToken()
         {
             var moment = new DateTimeOffset(2000, 1, 1, 0, 0, 0, default);
             var time = Mock.Of<ITime>(t => t.UtcNow == moment);
@@ -186,22 +187,22 @@ namespace Lokman.Tests
             var store = new Mock<DistributedLockStore>(Mock.Of<IDistributedLockStoreCleanupStrategy>(), queue, time) {
                 CallBase = true,
             };
-            var savedEpoch = new Epoch(1337, moment.UtcTicks);
+            var savedToken = 1337;
             store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveEpoch("foo", savedEpoch);
+            store.Object.SaveToken("foo", savedToken);
 
-            await store.Object.SetExpirationAsync("foo", 31337, 31337, default).ConfigureAwait(false);
+            await store.Object.UpdateAsync("foo", 31337, TimeSpan.FromTicks(31337), default).ConfigureAwait(false);
 
-            store.Verify(x => x.NextEpoch(), Times.Never);
-            store.Verify(x => x.CurrentEpoch(), Times.Once);
+            store.Verify(x => x.NextToken(), Times.Never);
+            store.Verify(x => x.CurrentToken(), Times.Once);
         }
 
         [Fact]
-        public async Task SetExpirationAsync_Should_ThrowKeyNotFoundException_If_LockIsNotFound()
+        public async Task UpdateAsync_Should_ThrowKeyNotFoundException_If_LockIsNotFound()
         {
             using var store = new DistributedLockStore(Mock.Of<IDistributedLockStoreCleanupStrategy>(), Mock.Of<IExpirationQueue>(), Mock.Of<ITime>());
             await Assert.ThrowsAsync<KeyNotFoundException>(async () => {
-                await store.SetExpirationAsync("foo", 0, 0, default).ConfigureAwait(false);
+                await store.UpdateAsync("foo", 0, default, default).ConfigureAwait(false);
             }).ConfigureAwait(false);
         }
 

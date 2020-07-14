@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Lokman.Protos;
 
 namespace Lokman
 {
@@ -12,21 +14,42 @@ namespace Lokman
     {
         private readonly Protos.DistributedLockService.DistributedLockServiceClient _grpc;
 
-        public GrpcDistributedLockStore(Protos.DistributedLockService.DistributedLockServiceClient grpc) => _grpc = grpc;
-
-        public ValueTask<Epoch> AcquireAsync(string key, long expiration, CancellationToken cancellationToken = default)
+        public GrpcDistributedLockStore(Protos.DistributedLockService.DistributedLockServiceClient grpc)
         {
-            throw new NotImplementedException();
+            _grpc = grpc;
         }
 
-        public ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default)
+        public async ValueTask<long> AcquireAsync(string key, TimeSpan duration, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var request = new LockRequest() {
+                Key = key,
+                Duration = Duration.FromTimeSpan(duration),
+                Token = -1,
+            };
+            var response = await _grpc.LockAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return response.Token;
         }
 
-        public ValueTask<Epoch> SetExpirationAsync(string key, long index, long expiration, CancellationToken cancellationToken = default)
+        public async ValueTask<long> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var request = new LockRequest() {
+                Key = key,
+                Duration = Duration.FromTimeSpan(TimeSpan.Zero),
+                Token = token,
+            };
+            var response = await _grpc.LockAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return response.Token;
+        }
+
+        public async ValueTask<long> UpdateAsync(string key, long token, TimeSpan duration, CancellationToken cancellationToken = default)
+        {
+            var request = new LockRequest() {
+                Key = key,
+                Duration = Duration.FromTimeSpan(duration),
+                Token = token,
+            };
+            var response = await _grpc.LockAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return response.Token;
         }
     }
 }

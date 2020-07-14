@@ -9,20 +9,16 @@ namespace Lokman
     /// <summary>
     /// Grpc server-side service
     /// </summary>
-    public class DistributedLockService : Protos.DistributedLockService.DistributedLockServiceBase, IAsyncDisposable, IDisposable
+    public class GrpcDistributedLockService : Protos.DistributedLockService.DistributedLockServiceBase, IAsyncDisposable, IDisposable
     {
-        private readonly IEventLogger<DistributedLockService> _logger;
+        private readonly IEventLogger<GrpcDistributedLockService> _logger;
         private readonly IDistributedLockStore _lockStore;
-        private readonly ITime _time;
         private bool _isDisposed;
 
-        public DistributedLockService(IEventLogger<DistributedLockService> logger, IDistributedLockStore lockStore) : this(logger, lockStore, SystemTime.Instance) { }
-
-        internal DistributedLockService(IEventLogger<DistributedLockService> logger, IDistributedLockStore lockStore, ITime time)
+        public GrpcDistributedLockService(IEventLogger<GrpcDistributedLockService> logger, IDistributedLockStore lockStore)
         {
             _logger = logger;
             _lockStore = lockStore;
-            _time = time;
         }
 
         public override Task<LockResponse> Lock(LockRequest request, ServerCallContext context)
@@ -30,30 +26,29 @@ namespace Lokman
 
         public async Task<LockResponse> ProcessAsync(LockRequest request, CancellationToken cancellationToken = default)
         {
-            var currentTimeTicks = _time.UtcNow.Ticks;
             try
             {
-                Epoch epoch;
-                if (request.Expiration == 0 || request.Expiration <= currentTimeTicks)
+                long token;
+                var requestedDuration = request.Duration.ToTimeSpan();
+                if (requestedDuration.Ticks == 0)
                 {
                     _logger.DebugEvent("ProcessAsync.ReleaseAsync", new { Request = request });
-                    epoch = await _lockStore.ReleaseAsync(request.Key, request.Index, cancellationToken).ConfigureAwait(false);
+                    token = await _lockStore.ReleaseAsync(request.Key, request.Token, cancellationToken).ConfigureAwait(false);
                 }
-                else if (request.Index >= 0)
+                else if (request.Token >= 0)
                 {
-                    _logger.DebugEvent("ProcessAsync.SetExpirationAsync", new { Request = request });
-                    epoch = await _lockStore.SetExpirationAsync(request.Key, request.Index, request.Expiration, cancellationToken).ConfigureAwait(false);
+                    _logger.DebugEvent("ProcessAsync.UpdateDurationAsync", new { Request = request });
+                    token = await _lockStore.UpdateAsync(request.Key, request.Token, requestedDuration, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     _logger.DebugEvent("ProcessAsync.AcquireAsync", new { Request = request });
-                    epoch = await _lockStore.AcquireAsync(request.Key, request.Expiration, cancellationToken).ConfigureAwait(false);
+                    token = await _lockStore.AcquireAsync(request.Key, requestedDuration, cancellationToken).ConfigureAwait(false);
                 }
 
                 return new LockResponse() {
                     Key = request.Key,
-                    Index = epoch.Index,
-                    Ticks = epoch.Ticks,
+                    Token = token,
                 };
             }
             catch (Exception ex)
@@ -61,8 +56,7 @@ namespace Lokman
                 _logger.ErrorEvent(ex, "ProcessAsync.Error", new { Request = request, ErrorMsg = ex.Message, });
                 return new LockResponse() {
                     Key = request.Key,
-                    Index = -1,
-                    Ticks = _time.UtcNow.Ticks,
+                    Token = -1,
                 };
             }
         }

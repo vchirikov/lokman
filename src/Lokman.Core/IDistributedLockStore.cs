@@ -8,9 +8,9 @@ namespace Lokman
 {
     public interface IDistributedLockStore
     {
-        ValueTask<Epoch> AcquireAsync(string key, long expiration, CancellationToken cancellationToken = default);
-        ValueTask<Epoch> SetExpirationAsync(string key, long index, long expiration, CancellationToken cancellationToken = default);
-        ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default);
+        ValueTask<long> AcquireAsync(string key, TimeSpan duration, CancellationToken cancellationToken = default);
+        ValueTask<long> UpdateAsync(string key, long token, TimeSpan duration, CancellationToken cancellationToken = default);
+        ValueTask<long> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default);
     }
 
     public class DistributedLockStore : IDistributedLockStore, IAsyncDisposable, IDisposable
@@ -18,7 +18,7 @@ namespace Lokman
         /// <summary>
         /// Increasing store state counter
         /// </summary>
-        private long _epoch;
+        private long _currentTocken;
         private bool _isDisposed;
         private readonly ITime _time;
         private readonly IDistributedLockStoreCleanupStrategy _cleanupStrategy;
@@ -44,7 +44,7 @@ namespace Lokman
             _time = time;
         }
 
-        public async ValueTask<Epoch> AcquireAsync(string key, long expiration, CancellationToken cancellationToken = default)
+        public async ValueTask<long> AcquireAsync(string key, TimeSpan duration, CancellationToken cancellationToken = default)
         {
             await _cleanupStrategy.CleanupAsync(this, cancellationToken).ConfigureAwait(false);
 
@@ -52,6 +52,7 @@ namespace Lokman
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
+                long expiration = unchecked(_time.UtcNow.Ticks + duration.Ticks);
                 await _expirationQueue.EnqueueAsync(key, expiration, () => semaphore.Release(), cancellationToken).ConfigureAwait(false);
             }
             catch (TaskCanceledException)
@@ -60,12 +61,12 @@ namespace Lokman
                 semaphore.Release();
                 throw;
             }
-            var result = NextEpoch();
-            SaveEpoch(key, result);
+            var result = NextToken();
+            SaveToken(key, result);
             return result;
         }
 
-        public async ValueTask<Epoch> ReleaseAsync(string key, long index, CancellationToken cancellationToken = default)
+        public async ValueTask<long> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default)
         {
             if (!_locks.TryGetValue(key, out var semaphore))
                 ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
@@ -73,26 +74,27 @@ namespace Lokman
             if (!_lockEpochs.TryGetValue(key, out var savedIndex))
                 ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
 
-            if (savedIndex == index)
+            if (savedIndex == token)
             {
                 await _expirationQueue.DequeueAsync(key, cancellationToken).ConfigureAwait(false);
                 semaphore!.Release();
-                return NextEpoch();
+                return NextToken();
             }
-            return CurrentEpoch();
+            return CurrentToken();
         }
 
-        public async ValueTask<Epoch> SetExpirationAsync(string key, long index, long expiration, CancellationToken cancellationToken = default)
+        public async ValueTask<long> UpdateAsync(string key, long token, TimeSpan duration, CancellationToken cancellationToken = default)
         {
             if (!_lockEpochs.TryGetValue(key, out var savedIndex))
                 ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
 
-            if (savedIndex == index)
+            if (savedIndex == token)
             {
+                long expiration = unchecked(_time.UtcNow.Ticks + duration.Ticks);
                 await _expirationQueue.UpdateExpirationAsync(key, expiration, cancellationToken).ConfigureAwait(false);
-                return NextEpoch();
+                return NextToken();
             }
-            return CurrentEpoch();
+            return CurrentToken();
         }
 
         protected virtual async ValueTask DisposeAsyncCore()
@@ -131,13 +133,13 @@ namespace Lokman
         }
 
         // for testing
-        protected virtual internal void SaveEpoch(string key, Epoch result)
-            => _lockEpochs[key] = result.Index;
+        protected virtual internal void SaveToken(string key, long token)
+            => _lockEpochs[key] = token;
 
-        protected virtual internal Epoch NextEpoch()
-            => new Epoch(Interlocked.Increment(ref _epoch), _time.UtcNow.UtcTicks);
+        protected virtual internal long NextToken()
+            => Interlocked.Increment(ref _currentTocken);
 
-        protected virtual internal Epoch CurrentEpoch()
-            => new Epoch(Volatile.Read(ref _epoch), _time.UtcNow.UtcTicks);
+        protected virtual internal long CurrentToken()
+            => Volatile.Read(ref _currentTocken);
     }
 }

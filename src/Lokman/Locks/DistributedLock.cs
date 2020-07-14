@@ -6,12 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Primitives;
+using static Lokman.OperationResultHelpers;
 
 namespace Lokman
 {
     public interface IDistributedLock : IAsyncDisposable
     {
-        ValueTask<OperationResult<DistributedLockHandle>> TryAcquireAsync(CancellationToken cancellationToken = default);
+        ValueTask<OperationResult<DistributedLockHandle, Error>> AcquireAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns lock handle <paramref name="lockHandle"/> to the pool
@@ -62,9 +63,27 @@ namespace Lokman
         }
 
         /// <inheritdoc />
-        public ValueTask<OperationResult<DistributedLockHandle>> TryAcquireAsync(CancellationToken cancellationToken = default)
+        public async ValueTask<OperationResult<DistributedLockHandle, Error>> AcquireAsync(CancellationToken cancellationToken = default)
         {
+            foreach (var resource in _resources)
+            {
+                if (resource is null)
+                    continue;
+
+                await _store.AcquireAsync(resource, default, cancellationToken).ConfigureAwait(false);
+
+            }
+            try
+            {
+
+            }
+            catch(Exception ex)
+            {
+                return Error(ex);
+            }
             var obj = _handlePool.Get();
+
+
             throw new NotImplementedException();
         }
 

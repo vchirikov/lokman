@@ -1,8 +1,10 @@
 // style guide https://developers.google.com/protocol-buffers/docs/style
 // language guide proto3 https://developers.google.com/protocol-buffers/docs/proto3
+// wcf to grpc guide https://docs.microsoft.com/en-us/dotnet/architecture/grpc-for-wcf-developers
 syntax = "proto3";
 
 import "google/api/annotations.proto";
+import "google/protobuf/duration.proto";
 
 option csharp_namespace = "Lokman.Protos";
 option optimize_for = SPEED;
@@ -11,14 +13,13 @@ package lokman;
 
 message LockRequest{
     string key = 1;
-    int64 expiration = 2;
-    int64 index = 3;
+    google.protobuf.Duration duration = 2;
+    int64 token = 3;
 
 }
 message LockResponse{
     string key = 1;
-    int64 ticks = 2;
-    int64 index = 3;
+    int64 token = 2;
 }
 
 service DistributedLockService {

@@ -61,7 +61,6 @@ namespace Lokman
         public IDistributedLock Create(StringValues resources, TimeSpan? duration = null)
         {
             var lockObj = _lockPool.Get();
-            // ToDo: [Bench] [CodeQuality] Do we need a function call like 'initialize' here?
             (lockObj._resources, lockObj._duration) = (resources, duration ?? _config.DefaultDuration);
             return lockObj;
         }
@@ -84,20 +83,17 @@ namespace Lokman
     {
         private readonly DistributedLockManager _manager;
         private readonly ObjectPoolProvider _poolProvider;
-        private readonly IDistributedLockStore _transport;
+        private readonly IDistributedLockStore _store;
 
         public DistributedLockPooledObjectPolicy(DistributedLockManager manager, ObjectPoolProvider poolProvider, IDistributedLockStore transport)
         {
             _manager = manager;
             _poolProvider = poolProvider;
-            _transport = transport;
+            _store = transport;
         }
 
         public override DistributedLock Create()
-        {
-            // ToDo: [Design] Do we need initialize with some defaults here?
-            return new DistributedLock(_manager, _poolProvider, _transport);
-        }
+            => new DistributedLock(_manager, _poolProvider, _store);
 
         public override bool Return(DistributedLock obj)
         {

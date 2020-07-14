@@ -49,7 +49,7 @@ namespace Lokman.Server
             app.UseRouting();
 
             app.UseEndpoints(endpoints => {
-                endpoints.MapGrpcService<DistributedLockService>();
+                endpoints.MapGrpcService<GrpcDistributedLockService>();
                 endpoints.MapGet("/", async context => {
                     await context.Response.WriteAsync("<h1>Lokman</h1><a href='/swagger/'>Swagger</a>").ConfigureAwait(false);
                 });

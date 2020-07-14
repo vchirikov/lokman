@@ -5,6 +5,7 @@ using Google.Type;
 using System;
 using Moq;
 using System.Threading;
+using Google.Protobuf.WellKnownTypes;
 
 namespace Lokman.Tests
 {
@@ -15,40 +16,38 @@ namespace Lokman.Tests
         {
             var store = new Mock<IDistributedLockStore>();
             var acquireRequest = new LockRequest() {
-                Expiration = 100,
-                Index = -1,
+                Duration = Duration.FromTimeSpan(TimeSpan.FromTicks(100)),
+                Token = -1,
                 Key = "foo",
             };
 
-            using var service = new DistributedLockService(Mock.Of<IEventLogger<DistributedLockService>>(),
-                store.Object,
-                Mock.Of<ITime>()
+            using var service = new GrpcDistributedLockService(Mock.Of<IEventLogger<GrpcDistributedLockService>>(),
+                store.Object
             );
 
             await service.ProcessAsync(acquireRequest, default).ConfigureAwait(false);
 
-            store.Verify(s => s.AcquireAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Once);
+            store.Verify(s => s.AcquireAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task ProcessAsync_Should_ParseToSetExpirationAsync()
+        public async Task ProcessAsync_Should_ParseToUpdateAsync()
         {
             var store = new Mock<IDistributedLockStore>();
 
             var acquireRequest = new LockRequest() {
-                Expiration = 100,
-                Index = 1,
+                Duration = Duration.FromTimeSpan(TimeSpan.FromTicks(100)),
+                Token = 1,
                 Key = "foo",
             };
 
-            using var service = new DistributedLockService(Mock.Of<IEventLogger<DistributedLockService>>(),
-                store.Object,
-                Mock.Of<ITime>()
+            using var service = new GrpcDistributedLockService(Mock.Of<IEventLogger<GrpcDistributedLockService>>(),
+                store.Object
             );
 
             await service.ProcessAsync(acquireRequest, default).ConfigureAwait(false);
 
-            store.Verify(s => s.SetExpirationAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Once);
+            store.Verify(s => s.UpdateAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -57,14 +56,13 @@ namespace Lokman.Tests
             var store = new Mock<IDistributedLockStore>();
 
             var acquireRequest = new LockRequest() {
-                Expiration = 0,
-                Index = 0,
+                Duration = Duration.FromTimeSpan(default),
+                Token = 0,
                 Key = "foo",
             };
 
-            using var service = new DistributedLockService(Mock.Of<IEventLogger<DistributedLockService>>(),
-                store.Object,
-                Mock.Of<ITime>()
+            using var service = new GrpcDistributedLockService(Mock.Of<IEventLogger<GrpcDistributedLockService>>(),
+                store.Object
             );
 
             await service.ProcessAsync(acquireRequest, default).ConfigureAwait(false);
@@ -80,14 +78,13 @@ namespace Lokman.Tests
             var store = new Mock<IDistributedLockStore>();
 
             var acquireRequest = new LockRequest() {
-                Expiration = 100,
-                Index = 1,
+                Duration = Duration.FromTimeSpan(default),
+                Token = 1,
                 Key = "foo",
             };
 
-            using var service = new DistributedLockService(Mock.Of<IEventLogger<DistributedLockService>>(),
-                store.Object,
-                time
+            using var service = new GrpcDistributedLockService(Mock.Of<IEventLogger<GrpcDistributedLockService>>(),
+                store.Object
             );
 
             await service.ProcessAsync(acquireRequest, default).ConfigureAwait(false);
@@ -101,10 +98,9 @@ namespace Lokman.Tests
             var store = new Mock<IDistributedLockStore>();
             var disposableStore = store.As<IDisposable>();
 
-            using (new DistributedLockService(
-                Mock.Of<IEventLogger<DistributedLockService>>(),
-                store.Object,
-                Mock.Of<ITime>()
+            using (new GrpcDistributedLockService(
+                Mock.Of<IEventLogger<GrpcDistributedLockService>>(),
+                store.Object
             ))
             { }
 
@@ -117,10 +113,9 @@ namespace Lokman.Tests
             var store = new Mock<IDistributedLockStore>();
             var asyncDisposableStore = store.As<IAsyncDisposable>();
 
-            await using (new DistributedLockService(
-                Mock.Of<IEventLogger<DistributedLockService>>(),
-                store.Object,
-                Mock.Of<ITime>()
+            await using (new GrpcDistributedLockService(
+                Mock.Of<IEventLogger<GrpcDistributedLockService>>(),
+                store.Object
             ).ConfigureAwait(false))
             { }
 
