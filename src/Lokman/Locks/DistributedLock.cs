@@ -65,26 +65,44 @@ namespace Lokman
         /// <inheritdoc />
         public async ValueTask<OperationResult<DistributedLockHandle, Error>> AcquireAsync(CancellationToken cancellationToken = default)
         {
+            Exception? exception = null;
+            var handle = _handlePool.Get();
             foreach (var resource in _resources)
             {
                 if (resource is null)
                     continue;
-
-                await _store.AcquireAsync(resource, default, cancellationToken).ConfigureAwait(false);
-
+                long token = 0;
+                try
+                {
+                    // ToDo: add usage of Polly policies here
+                    token = await _store.AcquireAsync(resource, _duration, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    exception = ex;
+                    break;
+                }
+                handle._resources.Add((resource, token));
             }
-            try
+
+            if (exception != null)
             {
-
+                handle._resources.Reverse();
+                foreach (var (resource, token) in handle._resources)
+                {
+                    try
+                    {
+                        await _store.ReleaseAsync(resource, token).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        // ToDo: add logging here
+                        System.Diagnostics.Debug.WriteLine($"Exception in error handling: {ex}");
+                    }
+                }
+                return Error(exception);
             }
-            catch(Exception ex)
-            {
-                return Error(ex);
-            }
-            var obj = _handlePool.Get();
-
-
-            throw new NotImplementedException();
+            return handle;
         }
 
         /// <summary>

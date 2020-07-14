@@ -24,7 +24,7 @@ namespace Lokman.Tests
             var defaultObj = new DistributedLockHandle(Mock.Of<IDistributedLock>());
             await using var _ = lockObj.ConfigureAwait(false);
             lockObj._id = Guid.NewGuid();
-            lockObj._resources = "foo";
+            lockObj._resources.Add(("foo", 123));
 
             lockObj.Clear();
 

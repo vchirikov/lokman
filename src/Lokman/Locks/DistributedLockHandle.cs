@@ -1,19 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Primitives;
 
 namespace Lokman
 {
     public class DistributedLockHandle : IAsyncDisposable
     {
         public Guid Id => _id;
-        public StringValues Resources => _resources;
+        public IEnumerable<(string Resource, long Token)> Resources => _resources;
 
-        internal StringValues _resources;
         internal Guid _id;
+        internal readonly List<(string Resource, long Token)> _resources = new List<(string Resource, long Token)>();
 
         private readonly IDistributedLock _lock;
 
@@ -29,6 +26,10 @@ namespace Lokman
             return _lock.ReturnAsync(this);
         }
 
-        internal void Clear() => (_resources, _id) = (default, default);
+        internal void Clear()
+        {
+            _id = default;
+            _resources.Clear();
+        }
     }
 }
