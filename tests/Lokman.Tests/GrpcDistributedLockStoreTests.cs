@@ -20,6 +20,7 @@ namespace Lokman.Tests
                     Key = "foo",
                     Token = 1,
                 }), default, default, default, default));
+
             var store = new GrpcDistributedLockStore(grpc.Object);
 
             await store.AcquireAsync("foo", TimeSpan.FromSeconds(10)).ConfigureAwait(false);

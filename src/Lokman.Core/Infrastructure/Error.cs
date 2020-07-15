@@ -1,10 +1,9 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace Lokman
 {
-    [ExcludeFromCodeCoverage]
     public class Error
     {
         public Error(uint errorCode, DateTimeOffset dateTime, Exception? exception, string description)
@@ -22,5 +21,22 @@ namespace Lokman
 
         public override string ToString()
             => $"[{DateTime.ToString(CultureInfo.InvariantCulture)}] ({ErrorCode}) {Description} Exception: {Exception?.ToString() ?? "null"}";
+    }
+
+    /// <summary>
+    /// [0; 5000) - Server errors
+    /// [5000; ) - Client errors
+    /// </summary>
+    public static class ErrorCodes
+    {
+        /// <summary>
+        /// [5000; ) - Client errors
+        /// </summary>
+        public static class Client
+        {
+            public const uint UnknownError = 5000;
+            public const uint AcquireLockError = 5001;
+            public const uint ReleaseLockError = 5002;
+        }
     }
 }

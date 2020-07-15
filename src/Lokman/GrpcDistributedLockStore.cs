@@ -13,10 +13,7 @@ namespace Lokman
     {
         private readonly DistributedLockService.DistributedLockServiceClient _grpc;
 
-        public GrpcDistributedLockStore(DistributedLockService.DistributedLockServiceClient grpc)
-        {
-            _grpc = grpc;
-        }
+        public GrpcDistributedLockStore(DistributedLockService.DistributedLockServiceClient grpc) => _grpc = grpc;
 
         public async ValueTask<long> AcquireAsync(string key, TimeSpan duration, CancellationToken cancellationToken = default)
         {

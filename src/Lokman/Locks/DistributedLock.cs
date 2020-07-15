@@ -13,6 +13,7 @@ namespace Lokman
     public interface IDistributedLock : IAsyncDisposable
     {
         ValueTask<OperationResult<DistributedLockHandle, Error>> AcquireAsync(CancellationToken cancellationToken = default);
+        ValueTask<OperationResult<long, Error>> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns lock handle <paramref name="lockHandle"/> to the pool
@@ -67,48 +68,65 @@ namespace Lokman
         {
             Exception? exception = null;
             var handle = _handlePool.Get();
-            foreach (var resource in _resources)
+            try
             {
-                if (resource is null)
-                    continue;
-                long token = 0;
-                try
+                foreach (var resource in _resources)
                 {
+                    if (resource is null)
+                        continue;
+                    long token = 0;
                     // ToDo: add usage of Polly policies here
                     token = await _store.AcquireAsync(resource, _duration, cancellationToken).ConfigureAwait(false);
+                    handle._resources.Add((resource, token));
                 }
-                catch (Exception ex)
-                {
-                    exception = ex;
-                    break;
-                }
-                handle._resources.Add((resource, token));
             }
-
-            if (exception != null)
+            catch (Exception ex)
             {
-                handle._resources.Reverse();
-                foreach (var (resource, token) in handle._resources)
+                exception = ex;
+            }
+            finally
+            {
+                if (exception != null)
                 {
-                    try
+                    handle._resources.Reverse();
+                    foreach (var (resource, token) in handle._resources)
                     {
-                        await _store.ReleaseAsync(resource, token).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        // ToDo: add logging here
-                        System.Diagnostics.Debug.WriteLine($"Exception in error handling: {ex}");
+                        try
+                        {
+                            await _store.ReleaseAsync(resource, token).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            // ToDo: add logging here
+                            System.Diagnostics.Debug.WriteLine($"Exception in error handling: {ex}");
+                        }
                     }
                 }
-                return Error(exception);
             }
+            if (exception != null)
+                return Error(exception, ErrorCodes.Client.AcquireLockError, $"Can't get lock '{_resources.ToString() ?? "null"}' for duration {_duration}. Cancellation status: {cancellationToken.IsCancellationRequested}.");
+
             return handle;
+        }
+
+        public async ValueTask<OperationResult<long, Error>> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                return await _store.ReleaseAsync(key, token, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                return Error(ex, ErrorCodes.Client.ReleaseLockError, $"Can't release lock with key: '{key ?? "null"}'.");
+
+            }
         }
 
         /// <summary>
         /// Used when the object returns to the pool
         /// </summary>
         internal void Clear() => (_resources, _duration) = (default, default);
+
     }
 
     /// <summary>
