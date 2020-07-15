@@ -9,11 +9,10 @@ namespace Lokman
     /// <summary>
     /// Grpc server-side service
     /// </summary>
-    public class GrpcDistributedLockService : Protos.DistributedLockService.DistributedLockServiceBase, IAsyncDisposable, IDisposable
+    public class GrpcDistributedLockService : Protos.DistributedLockService.DistributedLockServiceBase
     {
         private readonly IEventLogger<GrpcDistributedLockService> _logger;
         private readonly IDistributedLockStore _lockStore;
-        private bool _isDisposed;
 
         public GrpcDistributedLockService(IEventLogger<GrpcDistributedLockService> logger, IDistributedLockStore lockStore)
         {
@@ -59,37 +58,6 @@ namespace Lokman
                     Token = -1,
                 };
             }
-        }
-
-        protected virtual async ValueTask DisposeAsyncCore()
-        {
-            if (_lockStore is IAsyncDisposable asyncDisposable1)
-                await asyncDisposable1.DisposeAsync().ConfigureAwait(false);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_isDisposed)
-            {
-                if (disposing)
-                {
-                    (_lockStore as IDisposable)?.Dispose();
-                }
-                _isDisposed = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await DisposeAsyncCore().ConfigureAwait(false);
-            Dispose(disposing: false);
-            GC.SuppressFinalize(this);
         }
     }
 }

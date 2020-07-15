@@ -1,6 +1,8 @@
 // style guide https://developers.google.com/protocol-buffers/docs/style
 // language guide proto3 https://developers.google.com/protocol-buffers/docs/proto3
+// http rest options https://cloud.google.com/service-infrastructure/docs/service-management/reference/rpc/google.api#google.api.HttpRule
 // wcf to grpc guide https://docs.microsoft.com/en-us/dotnet/architecture/grpc-for-wcf-developers
+
 syntax = "proto3";
 
 import "google/api/annotations.proto";
@@ -13,6 +15,7 @@ package lokman;
 
 message LockRequest{
     string key = 1;
+    // 3602.000015700s for example where 157 is timespan ticks
     google.protobuf.Duration duration = 2;
     int64 token = 3;
 
@@ -23,9 +26,6 @@ message LockResponse{
 }
 
 service DistributedLockService {
-    // this experimental api, with worse perfomance than regular grpc api
-    // but can be used in tests/scripts etc (not in benchmarks)
-    // https://cloud.google.com/service-infrastructure/docs/service-management/reference/rpc/google.api#google.api.HttpRule
     rpc Lock(LockRequest) returns (LockResponse){
         option (google.api.http) = {
             post: "/v1/lock"

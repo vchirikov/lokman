@@ -95,7 +95,7 @@ namespace Lokman
                         SpinWait(SpinWaitIterations);
                     }
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
                     break;
                 }

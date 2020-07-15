@@ -13,13 +13,12 @@ namespace Lokman
         ValueTask<long> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default);
     }
 
-    public class DistributedLockStore : IDistributedLockStore, IAsyncDisposable, IDisposable
+    public class DistributedLockStore : IDistributedLockStore
     {
         /// <summary>
         /// Increasing store state counter
         /// </summary>
         private long _currentTocken;
-        private bool _isDisposed;
         private readonly ITime _time;
         private readonly IDistributedLockStoreCleanupStrategy _cleanupStrategy;
         private readonly IExpirationQueue _expirationQueue;
@@ -55,7 +54,7 @@ namespace Lokman
                 long expiration = unchecked(_time.UtcNow.Ticks + duration.Ticks);
                 await _expirationQueue.EnqueueAsync(key, expiration, () => semaphore.Release(), cancellationToken).ConfigureAwait(false);
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
             {
                 // we're cancelled while waiting of adding to expiration queue, so we need Release lock by myself
                 semaphore.Release();
@@ -95,41 +94,6 @@ namespace Lokman
                 return NextToken();
             }
             return CurrentToken();
-        }
-
-        protected virtual async ValueTask DisposeAsyncCore()
-        {
-            if (_cleanupStrategy is IAsyncDisposable asyncDisposable1)
-                await asyncDisposable1.DisposeAsync().ConfigureAwait(false);
-
-            if (_expirationQueue is IAsyncDisposable asyncDisposable2)
-                await asyncDisposable2.DisposeAsync().ConfigureAwait(false);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_isDisposed)
-            {
-                if (disposing)
-                {
-                    (_cleanupStrategy as IDisposable)?.Dispose();
-                    (_expirationQueue as IDisposable)?.Dispose();
-                }
-                _isDisposed = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await DisposeAsyncCore().ConfigureAwait(false);
-            Dispose(disposing: false);
-            GC.SuppressFinalize(this);
         }
 
         // for testing

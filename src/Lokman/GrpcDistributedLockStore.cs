@@ -2,7 +2,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Grpc.Core;
 using Lokman.Protos;
 
 namespace Lokman
@@ -12,9 +11,9 @@ namespace Lokman
     /// </summary>
     public class GrpcDistributedLockStore : IDistributedLockStore
     {
-        private readonly Protos.DistributedLockService.DistributedLockServiceClient _grpc;
+        private readonly DistributedLockService.DistributedLockServiceClient _grpc;
 
-        public GrpcDistributedLockStore(Protos.DistributedLockService.DistributedLockServiceClient grpc)
+        public GrpcDistributedLockStore(DistributedLockService.DistributedLockServiceClient grpc)
         {
             _grpc = grpc;
         }
