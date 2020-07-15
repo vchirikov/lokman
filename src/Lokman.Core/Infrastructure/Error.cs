@@ -37,6 +37,7 @@ namespace Lokman
             public const uint UnknownError = 5000;
             public const uint AcquireLockError = 5001;
             public const uint ReleaseLockError = 5002;
+            public const uint UpdateLockError = 5003;
         }
     }
 }

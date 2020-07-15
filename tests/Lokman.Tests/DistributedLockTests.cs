@@ -57,9 +57,9 @@ namespace Lokman.Tests
             var lockObj = CreateLock();
             var defaultObj = CreateLock();
             defaultObj._duration = default;
-            defaultObj._resources = default;
+            defaultObj._keys = default;
             await using var _ = lockObj.ConfigureAwait(false);
-            lockObj._resources = new[] { "foo", "bar" };
+            lockObj._keys = new[] { "foo", "bar" };
             lockObj._duration = TimeSpan.FromSeconds(3);
 
             lockObj.Clear();
@@ -88,6 +88,7 @@ namespace Lokman.Tests
             Assert.NotNull(result.Error?.Exception);
             Assert.Equal("Something went wrong", result.Error.Exception.Message);
             Assert.True(result.Error.ErrorCode > ErrorCodes.Client.UnknownError);
+            Assert.Equal(result.Error.ErrorCode, ErrorCodes.Client.AcquireLockError);
         }
 
         [Fact]
@@ -120,7 +121,26 @@ namespace Lokman.Tests
             Assert.True(result.IsError);
             Assert.NotNull(result.Error?.Exception);
             Assert.Equal("Something went wrong", result.Error.Exception.Message);
-            Assert.True(result.Error.ErrorCode > ErrorCodes.Client.UnknownError);
+            Assert.Equal(result.Error.ErrorCode, ErrorCodes.Client.ReleaseLockError);
+        }
+
+
+        [Fact]
+        public async Task UpdateAsync_Should_ReturnErrorIfExceptionOccurs()
+        {
+            var store = new Mock<IDistributedLockStore>();
+            store.Setup(s => s.UpdateAsync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Something went wrong"));
+
+            var lockObj = CreateLock(mgr: null, store.Object);
+            var result = await lockObj.UpdateAsync("foo", 1, TimeSpan.FromMilliseconds(100)).ConfigureAwait(false);
+
+            store.Verify(s => s.UpdateAsync("foo", 1, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+
+            Assert.True(result.IsError);
+            Assert.NotNull(result.Error?.Exception);
+            Assert.Equal("Something went wrong", result.Error.Exception.Message);
+            Assert.Equal(result.Error.ErrorCode, ErrorCodes.Client.UpdateLockError);
         }
 
         private static DistributedLock CreateLock(IDistributedLockManager? mgr = null, IDistributedLockStore? store = null)
@@ -129,7 +149,7 @@ namespace Lokman.Tests
                 new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider()),
                 store ?? Mock.Of<IDistributedLockStore>()
             ) {
-                _resources = new string[] { "resource1", "resource2", "resource3" },
+                _keys = new string[] { "resource1", "resource2", "resource3" },
                 _duration = TimeSpan.FromSeconds(10)
             };
 

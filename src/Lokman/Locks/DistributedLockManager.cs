@@ -61,7 +61,7 @@ namespace Lokman
         public IDistributedLock Create(StringValues resources, TimeSpan? duration = null)
         {
             var lockObj = _lockPool.Get();
-            (lockObj._resources, lockObj._duration) = (resources, duration ?? _config.DefaultDuration);
+            (lockObj._keys, lockObj._duration) = (resources, duration ?? _config.DefaultDuration);
             return lockObj;
         }
 
