@@ -14,6 +14,6 @@ It isn't a duration, it is the ticks in **server time** when this lock will be r
 * Tuple of `(long Index, long Ticks)` called `Epoch`.  
 * For syncronization with server time you can get a fake lock with predefined name `PREDEFINED LOCK NAME HERE` which always will be "acquired". But you don't need get the server time each acquire request, because client lib should have logic for keeping time in sync with minimal request as possible.
 
-## Class diagram
+## Class diagram (OUTDATED)
 
 ![Main class diagram](./docs/img/classDiagram_01.png)
