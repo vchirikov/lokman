@@ -32,7 +32,7 @@
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="16.6.1" />
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageReference Update="xunit.runner.visualstudio" Version="2.4.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Update="xunit.runner.visualstudio" Version="2.4.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
 
     <PackageReference Update="CliWrap" Version="3.1.0" />
     <PackageReference Update="Bullseye" Version="3.3.0" />
