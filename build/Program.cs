@@ -98,6 +98,8 @@ namespace Build
 
             Target("coverage", async () => {
                 var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
+                if (!Directory.Exists(resultsDirectory))
+                    Directory.CreateDirectory(resultsDirectory);
                 var cmd = await Cli.Wrap(dotnet)
                     .WithArguments($"test " +
                     "--nologo " +

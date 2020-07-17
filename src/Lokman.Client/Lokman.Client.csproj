@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Lokman.Shared\Lokman.Shared.csproj" />
-    <ProjectReference Include="..\Lokman.\Lokman.csproj" />
+    <ProjectReference Include="..\Lokman\Lokman.csproj" />
   </ItemGroup>
 
   <ItemGroup Label="for vs">
