@@ -4,6 +4,7 @@
     <MicrosoftExtensionsVersion>3.1.6</MicrosoftExtensionsVersion>
     <GrpcVersion>2.30.0</GrpcVersion>
     <GrpcDotNetVersion>2.30.0-pre1</GrpcDotNetVersion>
+    <BlazorVersion>3.2.1</BlazorVersion>
   </PropertyGroup>
   <ItemGroup Label="nupkg Versions">
     <PackageReference Update="Microsoft.Extensions.ObjectPool" Version="$(MicrosoftExtensionsVersion)" />
@@ -11,6 +12,7 @@
     <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageReference Update="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
 
     <PackageReference Update="System.IO.Abstractions" Version="12.0.5" />
     <PackageReference Update="System.Text.Json" Version="4.7.2"/>
@@ -24,6 +26,11 @@
     <PackageReference Update="Google.Api.CommonProtos" Version="2.1.0" />
     <PackageReference Update="Microsoft.AspNetCore.Grpc.HttpApi" Version="0.1.0-alpha.20322.1" />
     <PackageReference Update="Microsoft.AspNetCore.Grpc.Swagger" Version="0.1.0-alpha.20322.1" />
+
+    <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)" />
+    <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)" />
+    <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />
+    <PackageReference Update="System.Net.Http.Json" Version="$(BlazorVersion)" />
 
     <!-- test/build/analyzers/versioning libs  -->
     <PackageReference Update="Moq" Version="4.14.5" />

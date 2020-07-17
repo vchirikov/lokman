@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Blazor doesn't support netcoreapp3.1 libraries -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RazorLangVersion>3.0</RazorLangVersion>
+    <!-- Disable typescript build via msbuild -->
+    <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
+    <PublishDir>$(SolutionDir)public</PublishDir>
+    <PublishConfiguration>Release</PublishConfiguration>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" />
+    <PackageReference Include="System.Net.Http.Json" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lokman.Shared\Lokman.Shared.csproj" />
+    <ProjectReference Include="..\Lokman.\Lokman.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="for vs">
+    <Folder Include="wwwroot\dist\" />
+    <TypeScriptCompile Remove="**\*" />
+  </ItemGroup>
+
+  <ItemGroup Label="msbuild webpack support">
+    <WebpackBuildInput Include="$(MSBuildThisFileDirectory)Webpack\**" Exclude="$(MSBuildThisFileDirectory)Webpack\node_modules\**" />
+    <WebpackBuildInput Include="$(MSBuildThisFileDirectory)Components\**\*.ts" />
+    <WebpackBuildInput Include="$(BaseIntermediateOutputPath)webpackconfig.txt" />
+    <UpToDateCheckInput Include="@(WebpackBuildInput)" />
+  </ItemGroup>
+
+  <!-- If package-lock.json has changed, perform NPM install -->
+  <Target Name="NpmInstall" Inputs="$(MSBuildThisFileDirectory)Webpack\package-lock.json" Outputs="$(BaseIntermediateOutputPath)package-lock.json">
+    <Message Importance="high" Text="Running npm install..." />
+    <Exec Command="npm install" WorkingDirectory="$(MSBuildThisFileDirectory)Webpack" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)Webpack\package-lock.json" DestinationFolder="$(BaseIntermediateOutputPath)" />
+  </Target>
+
+  <!-- If any source file in Webpack dir or below has changed, perform webpack build -->
+  <Target Name="TrackWebpackBuildConfig">
+    <WriteLinesToFile File="$(BaseIntermediateOutputPath)webpackconfig.txt" Lines="$(Configuration)" Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="utf-8" />
+  </Target>
+  <Target Name="WebpackBuild" DependsOnTargets="NpmInstall;TrackWebpackBuildConfig" BeforeTargets="CoreBuild" Inputs="@(WebpackBuildInput)" Outputs="$(MSBuildThisFileDirectory)wwwroot\dist\bundle.js">
+    <Exec Command="npm run build:$(Configuration)" WorkingDirectory="$(MSBuildThisFileDirectory)Webpack" />
+  </Target>
+
+
+</Project>

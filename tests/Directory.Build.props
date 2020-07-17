@@ -14,7 +14,7 @@
     <Nullable>annotations</Nullable>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <!-- Copy all references to output folder (important for coverage tools) -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> -->
   </PropertyGroup>
 
   <ItemGroup>

@@ -21,7 +21,7 @@ namespace Lokman
                 => (_keySelector, _comparer) = (keySelector, comparer ?? EqualityComparer<TKey>.Default);
 
             public bool Equals([AllowNull] T x, [AllowNull] T y) => _comparer.Equals(_keySelector(x!), _keySelector(y!));
-            public int GetHashCode([DisallowNull] T obj) => _comparer.GetHashCode(_keySelector(obj)!);
+            public int GetHashCode(/* netcoreapp3.1+: [DisallowNull]*/ T obj) => _comparer.GetHashCode(_keySelector(obj)!);
         }
     }
 }

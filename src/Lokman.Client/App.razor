@@ -1,0 +1,27 @@
+@namespace Lokman.Client
+
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div id="blazor-error-ui" class="container mx-auto my-8">
+                <div class="bg-red-100 shadow shadow-lg flex transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+                    <div class="bg-red-500 w-16 text-white justify-center flex items-center">
+                        <i class="fa fa-2x fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="h-full flex-1 flex border-r-8 border-red-500">
+                        <div class="flex-1 px-4 py-2 break-words">
+                            <p class="text-grey-dark font-bold">Error</p>
+                            <p>Sorry, something went wrong.</p>
+                        </div>
+                        <div class="flex-col w-8 items-start mx-auto pt-2 px-1 text-right text-gray-700 ml-3 mr-1">
+                            <a class="reload block cursor-pointer fa fa-repeat fa-fw" onclick="window.location.reload();"></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

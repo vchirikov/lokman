@@ -1,0 +1,33 @@
+@namespace Lokman.Client
+@inject NavigationManager _navManager
+@inherits LayoutComponentBase
+
+<NavBar Title="Lokman admin panel" @ref="_navBar" BorderColor="blue">
+    <Logo>
+        @* span for img alt sizing if something went wrong with img*@
+        <span class="text-2xl"><img class="w-6 h-6" src="/img/logo_32.png" alt="🔒" /></span>
+    </Logo>
+    <Links>
+        @{
+            // avoid "error RZ9986: Component attributes do not support complex content (mixed C# and markup)"
+            var cssClasses = $"py-1 px-0 lg:px-2 block border-b-2 border-transparent hover:border-{_navBar.BorderColor}-400 ";
+            foreach (var link in _links)
+            {
+                <li><NavLink class=@cssClasses href="@link.Page" rel="nofollow" target="@(link.OpenInNewTab ? "_blank" : "_self")">@link.Html</NavLink></li>
+            }
+        }
+    </Links>
+</NavBar>
+
+@Body
+
+@code
+{
+    [NotNull] NavBar? _navBar;
+
+    List<(MarkupString Html, string Page, bool OpenInNewTab)> _links = new List<(MarkupString Html, string Page, bool OpenInNewTab)>()
+    {
+        ((MarkupString)"Home", "/", false),
+        ((MarkupString)"<span class='hidden lg:inline-block text-xl'><i class='fa fa-fw fa-github text-base'></i></span><span class='lg:hidden'>GitHub</span>", "https://github.com/vchirikov/lokman", true),
+    };
+}

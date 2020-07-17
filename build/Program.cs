@@ -66,6 +66,12 @@ namespace Build
             var dotnet = TryFindDotNetExePath()
                 ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
 
+            Target("watch", async () => {
+                var cmd = await Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "Lokman.Server")} run -- -c DEBUG")
+                    .ToConsole()
+                    .ExecuteBufferedAsync().Task.ConfigureAwait(false);
+            });
+
             Target("restore-tools", async () => {
                 var cmd = await Cli.Wrap(dotnet).WithArguments($"tool restore --ignore-failed-sources").ToConsole()
                     .ExecuteBufferedAsync().Task.ConfigureAwait(false);

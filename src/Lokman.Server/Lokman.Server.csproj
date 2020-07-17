@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
@@ -8,10 +8,21 @@
     <PackageReference Include="Grpc.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Grpc.HttpApi" />
     <PackageReference Include="Microsoft.AspNetCore.Grpc.Swagger" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+  </ItemGroup>
+
+  <ItemGroup Label="dotnet watch">
+    <Watch Include="..\Lokman.Client\**\*.razor" />
+    <Watch Include="..\Lokman.Client\**\*.html" />
+    <Watch Include="..\Lokman.Client\**\*.css" Exclude="..\Lokman.Client\wwwroot\**\*.css;..\Lokman.Client\**\node_modules\**\*" />
+    <Watch Include="..\Lokman.Client\**\*.js" Exclude="..\Lokman.Client\wwwroot\dist\**\*;..\Lokman.Client\**\node_modules\**\*" />
+    <Watch Include="..\Lokman.Client\**\*.ts" Exclude="..\Lokman.Client\wwwroot\**\*.ts;..\Lokman.Client\**\node_modules\**\*" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Lokman.Core\Lokman.Core.csproj" />
+    <ProjectReference Include="..\Lokman.Client\Lokman.Client.csproj" />
+    <ProjectReference Include="..\Lokman.Shared\Lokman.Shared.csproj" />
+    <ProjectReference Include="..\Lokman\Lokman.csproj" />
   </ItemGroup>
 
 </Project>

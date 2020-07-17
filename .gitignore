@@ -1,7 +1,8 @@
-# Cake / Use `dotnet tool install -g Cake.Tool && dotnet cake`
-# Unused bootstrapers
-build.ps1
-build.sh
+/src/Lokman.Client/Webpack/**/*.js
+!/src/Lokman.Client/Webpack/*.config.js
+/src/Lokman.Client/wwwroot/**/dist/**
+public/
+
 **/coverage.json
 # Can contain personal info
 **/Properties/launchSettings.json
@@ -246,3 +247,4 @@ _Pvt_Extensions
 .fake/
 /CodeMaid.config
 **/node_modules
+*.binlog

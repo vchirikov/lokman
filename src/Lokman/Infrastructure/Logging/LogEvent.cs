@@ -8,8 +8,8 @@ namespace Lokman
 {
     public class LogEvent : IReadOnlyList<KeyValuePair<string, object>>
     {
-        private readonly string _eventName;
-        private readonly IReadOnlyList<KeyValuePair<string, object>> _data;
+        internal readonly string _eventName;
+        internal readonly IReadOnlyList<KeyValuePair<string, object>> _data;
 
         private static readonly IReadOnlyList<KeyValuePair<string, object>> _emptyList
             = new List<KeyValuePair<string, object>>(0);

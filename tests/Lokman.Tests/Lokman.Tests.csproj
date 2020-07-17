@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Lokman.Core\Lokman.Core.csproj" />
     <ProjectReference Include="..\..\src\Lokman\Lokman.csproj" />
+    <ProjectReference Include="..\..\src\Lokman.Client\Lokman.Client.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="*.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />

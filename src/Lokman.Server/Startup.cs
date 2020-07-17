@@ -26,7 +26,9 @@ namespace Lokman.Server
             services.AddGrpcSwagger();
 
             services.AddEventLogging();
+            services.AddControllers();
 
+            // TODO: place these lines to new extension method in Lokman project
             services.TryAddSingleton<IDistributedLockStoreCleanupStrategy>(NoOpDistributedLockStoreCleanupStrategy.Instance);
             services.TryAddSingleton<IDistributedLockStore, DistributedLockStore>();
             services.TryAddSingleton<IExpirationQueue, ExpirationQueue>();
@@ -40,6 +42,9 @@ namespace Lokman.Server
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseBlazorFrameworkFiles();
+            app.UseStaticFiles();
+
             // for swagger mostly
             app.UseSwagger();
             app.UseSwaggerUI(c => {
@@ -50,9 +55,8 @@ namespace Lokman.Server
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapGrpcService<GrpcDistributedLockService>();
-                endpoints.MapGet("/", async context => {
-                    await context.Response.WriteAsync("<h1>Lokman</h1><a href='/swagger/'>Swagger</a>").ConfigureAwait(false);
-                });
+                endpoints.MapControllers();
+                endpoints.MapFallbackToFile("index.html");
             });
         }
     }

@@ -1,0 +1,14 @@
+@namespace Lokman.Client
+@inject IOptions<AppSettings> _appSettingsOpt
+@inject ILiveReloadService _liveReload
+@inject IEventLogger<LiveReload> _logger
+
+@* https://github.com/dotnet/aspnetcore/issues/16218 *@
+@if (_appSettingsOpt.Value.EnableLiveReload)
+{
+    _logger.LogDebug("Start LiveReload");
+    _liveReload.StartWatchAsync().ConfigureAwait(false);
+}
+else {
+    _logger.LogDebug("LiveReload was disabled");
+}
