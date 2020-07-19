@@ -4,6 +4,7 @@
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(SolutionDir)..\artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <OutputPath>$(SolutionDir)..\artifacts\tools</OutputPath>
+    <NoWarn>$(NoWarn);CS1587;</NoWarn>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <!-- Include the PDB in the built .nupkg -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>

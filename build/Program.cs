@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Bullseye;
 using CliWrap;
@@ -29,6 +30,7 @@ namespace Build
         /// <param name="parallel">Run targets in parallel.</param>
         /// <param name="skipDependencies">Do not run targets' dependencies.</param>
         /// <param name="verbose">Enable verbose output.</param>
+        /// <param name="cancellationToken">The terminate program cancellation</param>
         /// <param name="configuration">The configuration for building</param>
         private static async Task Main(
             string[] arguments,
@@ -43,6 +45,7 @@ namespace Build
             bool parallel,
             bool skipDependencies,
             bool verbose,
+            CancellationToken cancellationToken,
             // our options here
             string configuration = "Debug"
             )
@@ -69,7 +72,8 @@ namespace Build
             Target("watch", async () => {
                 var cmd = await Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "Lokman.Server")} run -- -c DEBUG")
                     .ToConsole()
-                    .ExecuteBufferedAsync().Task.ConfigureAwait(false);
+                    .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+
             });
 
             Target("restore-tools", async () => {
@@ -87,13 +91,13 @@ namespace Build
                     // for Nerdbank.GitVersioning
                     $"-p:PublicRelease={isPublicRelease} "
                     ).ToConsole()
-                    .ExecuteBufferedAsync().Task.ConfigureAwait(false);
+                    .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
             });
 
             Target("build", async () => {
                 var cmd = await Cli.Wrap(dotnet).WithArguments($"build -noLogo -c {configuration}")
                     .ToConsole()
-                    .ExecuteBufferedAsync().Task.ConfigureAwait(false);
+                    .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
             });
 
             Target("coverage", async () => {
@@ -110,7 +114,7 @@ namespace Build
                     "-- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=json,cobertura"
                     )
                     .ToConsole()
-                    .ExecuteBufferedAsync().Task.ConfigureAwait(false);
+                    .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
 
                 MoveAttachmentsToResultsDirectory(resultsDirectory, cmd.StandardOutput);
                 TryRemoveTestsOutputDirectories(resultsDirectory);
@@ -151,7 +155,26 @@ namespace Build
 
             Target("default", DependsOn("build"));
 
-            await RunTargetsAndExitAsync(arguments, options).ConfigureAwait(false);
+            try
+            {
+                /// <see cref="RunTargetsAndExitAsync"/> will hang on ctrl+c, idk why, but it's happend after close target
+                await RunTargetsWithoutExitingAsync(arguments, options, ExceptionFilter).ConfigureAwait(false);
+            }
+            catch (TargetFailedException targetException)
+            {
+                if (targetException.InnerException is OperationCanceledException operationCanceledException)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine(operationCanceledException.Message);
+                    Console.ResetColor();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Unhandled exception: {ex}");
+                Console.ResetColor();
+            }
 
             static void SetEnvVariables()
             {
@@ -163,6 +186,13 @@ namespace Build
                 Environment.SetEnvironmentVariable("POWERSHELL_UPDATECHECK_OPTOUT", "1");
                 Environment.SetEnvironmentVariable("DOTNET_CLI_UI_LANGUAGE", "en");
             }
+
+            static bool ExceptionFilter(Exception ex) => ex switch
+            {
+                TargetFailedException => true,
+                OperationCanceledException => true,
+                _ => false
+            };
         }
 
         private static string? TryFindDotNetExePath()
