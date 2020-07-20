@@ -6,6 +6,9 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using System.Net.Http;
 using Microsoft.Extensions.Options;
+using Grpc.Net.Client;
+using Grpc.Net.Client.Web;
+using Lokman.Protos;
 
 namespace Lokman.Client
 {
@@ -14,6 +17,15 @@ namespace Lokman.Client
         public static async Task Main(string[] args)
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+            if (builder.HostEnvironment.IsDevelopment())
+            {
+                builder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions() {
+                    ValidateOnBuild = true,
+                    ValidateScopes = true,
+                }));
+            }
+
             builder.RootComponents.Add<App>("app");
             builder.RootComponents.Add<LiveReload>("livereload");
             builder.Logging.ClearProviders();
@@ -27,6 +39,9 @@ namespace Lokman.Client
                 .AddSingleton<ILiveReloadService, LiveReloadService>()
                 .AddSettings<AppSettings>(builder.Configuration)
                 ;
+
+            AddGrpcWeb(services);
+            AddLokmanClient(services);
 
             var jsInteropInterfaces = typeof(Program).Assembly.GetTypes().Where(t =>
                 t.IsInterface &&
@@ -47,6 +62,23 @@ namespace Lokman.Client
             logger.LogInformation("We are runned on {Environment} environment", opt.Value.Environment);
 
             await webAssemblyHost.RunAsync().ConfigureAwait(false);
+
+            // TODO: move this to separate extension method
+            static void AddLokmanClient(IServiceCollection services)
+            {
+                services.AddSingleton(sp => new DistributedLockService.DistributedLockServiceClient(sp.GetRequiredService<GrpcChannel>()));
+                services.AddSingleton<IDistributedLockStore, GrpcDistributedLockStore>();
+            }
+
+            static void AddGrpcWeb(IServiceCollection services)
+            {
+                services.AddSingleton(services => {
+                    // If server streaming is not used in your app then GrpcWeb is recommended because it produces smaller messages.
+                    // If you need streaming then GrpcWebText can be used
+                    var httpHandler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, new HttpClientHandler());
+                    return GrpcChannel.ForAddress(services.GetRequiredService<AppSettings>().ServedUrl, new GrpcChannelOptions { HttpHandler = httpHandler });
+                });
+            }
         }
     }
 }

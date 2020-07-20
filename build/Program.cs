@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -71,6 +72,7 @@ namespace Build
 
             Target("watch", async () => {
                 var cmd = await Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "Lokman.Server")} run -- -c DEBUG")
+                    .WithEnvironmentVariables(new Dictionary<string, string>() { ["ASPNETCORE_ENVIRONMENT"] = "Development" })
                     .ToConsole()
                     .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
 

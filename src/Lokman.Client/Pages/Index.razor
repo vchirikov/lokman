@@ -1,20 +1,20 @@
 @page "/"
 @page "/index.html"
-@page "/{Page:int}"
 @namespace Lokman.Client.Pages
-@inject NavigationManager _navManager
+@inject IDistributedLockStore _store
 
-<div class="container mx-auto py-2">
-    Hello from the root component
+<div class="container mx-auto mt-3 bg-white rounded md:shadow-xl p-4 text-base">
+    <h1 class="text-2xl font-bold border-b mb-5">Locks</h1>
+    @* Table header bar *@
+    <div class="container flex flex-1 bg-orange-200 flex-col justify-between">
+        <div class="bg-teal-100 p-2"><i class="fa fa-check-square text-teal-400" aria-hidden="true"></i> 100500 are selected</div>
+        <div class="bg-purple-400 p-2">another</div>
+    </div>
 </div>
 
 @code{
-    [Parameter]
-    public int Page { get; set; }
-
-    public void OnPageChanged(int value)
+    private async Task LockSomethingAsync()
     {
-        Page = value;
-        _navManager.NavigateTo("/" + Page);
+        await _store.AcquireAsync("resource1", TimeSpan.FromMinutes(1)).ConfigureAwait(false);
     }
 }

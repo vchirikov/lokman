@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" />
     <PackageReference Include="System.Net.Http.Json" />
+    <PackageReference Include="Grpc.Net.Client.Web" />
     <PackageReference Include="Microsoft.Extensions.Http" />
   </ItemGroup>
 

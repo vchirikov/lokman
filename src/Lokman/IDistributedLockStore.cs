@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,26 +12,37 @@ namespace Lokman
         ValueTask<long> AcquireAsync(string key, TimeSpan duration, CancellationToken cancellationToken = default);
         ValueTask<long> UpdateAsync(string key, long token, TimeSpan duration, CancellationToken cancellationToken = default);
         ValueTask<long> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns a snapshot of current store state
+        /// </summary>
+        ValueTask<IReadOnlyCollection<LockInfo>> GetCurrentLocksAsync(CancellationToken cancellationToken = default);
     }
 
     public class DistributedLockStore : IDistributedLockStore
     {
+        public class LockStoreRecord
+        {
+            public SemaphoreSlim Semaphore = new SemaphoreSlim(1, 1);
+            public long Token = -1;
+            /// <summary>
+            /// Used only for information, the real expiration is stored in <see cref="_expirationQueue"/>
+            /// </summary>
+            public DateTime ExpirationUtc;
+        }
+
         /// <summary>
         /// Increasing store state counter
         /// </summary>
-        private long _currentTocken;
+        private long _currentToken;
         private readonly ITime _time;
         private readonly IDistributedLockStoreCleanupStrategy _cleanupStrategy;
         private readonly IExpirationQueue _expirationQueue;
 
-        internal readonly ConcurrentDictionary<string, SemaphoreSlim> _locks
-            = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.OrdinalIgnoreCase);
+        internal readonly ConcurrentDictionary<string, LockStoreRecord> _locks
+            = new ConcurrentDictionary<string, LockStoreRecord>(StringComparer.OrdinalIgnoreCase);
 
-        private readonly ConcurrentDictionary<string, long> _lockEpochs
-            = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-
-        private static readonly Func<string, SemaphoreSlim> _cachedAddFactory
-            = _ => new SemaphoreSlim(1, 1);
+        private static readonly Func<string, LockStoreRecord> _cachedAddFactory = _ => new LockStoreRecord();
 
         public DistributedLockStore(IExpirationQueue expirationQueue) : this(NoOpDistributedLockStoreCleanupStrategy.Instance, expirationQueue, SystemTime.Instance) { }
 
@@ -43,67 +55,71 @@ namespace Lokman
             _time = time;
         }
 
+        /// <inheritdoc />
         public async ValueTask<long> AcquireAsync(string key, TimeSpan duration, CancellationToken cancellationToken = default)
         {
             await _cleanupStrategy.CleanupAsync(this, cancellationToken).ConfigureAwait(false);
 
-            var semaphore = _locks.GetOrAdd(key, _cachedAddFactory);
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var record = _locks.GetOrAdd(key, _cachedAddFactory);
+            await record.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                long expiration = unchecked(_time.UtcNow.Ticks + duration.Ticks);
-                await _expirationQueue.EnqueueAsync(key, expiration, () => semaphore.Release(), cancellationToken).ConfigureAwait(false);
+                var expiration = _time.UtcNow.AddTicks(duration.Ticks).UtcDateTime;
+                await _expirationQueue.EnqueueAsync(key, expiration.Ticks, () => record.Semaphore.Release(), cancellationToken).ConfigureAwait(false);
+                record.ExpirationUtc = expiration;
             }
             catch (OperationCanceledException)
             {
                 // we're cancelled while waiting of adding to expiration queue, so we need Release lock by myself
-                semaphore.Release();
+                record.Semaphore.Release();
                 throw;
             }
-            var result = NextToken();
-            SaveToken(key, result);
-            return result;
+            return SaveToken(record, NextToken());
         }
 
+        /// <inheritdoc />
         public async ValueTask<long> ReleaseAsync(string key, long token, CancellationToken cancellationToken = default)
         {
-            if (!_locks.TryGetValue(key, out var semaphore))
+            if (!_locks.TryGetValue(key, out var record))
                 ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
 
-            if (!_lockEpochs.TryGetValue(key, out var savedIndex))
-                ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
-
-            if (savedIndex == token)
+            if (record.Token == token)
             {
                 await _expirationQueue.DequeueAsync(key, cancellationToken).ConfigureAwait(false);
-                semaphore!.Release();
+                record.Semaphore.Release();
                 return NextToken();
             }
             return CurrentToken();
         }
 
+        /// <inheritdoc />
         public async ValueTask<long> UpdateAsync(string key, long token, TimeSpan duration, CancellationToken cancellationToken = default)
         {
-            if (!_lockEpochs.TryGetValue(key, out var savedIndex))
+            if (!_locks.TryGetValue(key, out var record))
                 ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
 
-            if (savedIndex == token)
+
+            if (record.Token == token)
             {
-                long expiration = unchecked(_time.UtcNow.Ticks + duration.Ticks);
-                await _expirationQueue.UpdateExpirationAsync(key, expiration, cancellationToken).ConfigureAwait(false);
+                var expiration = _time.UtcNow.AddTicks(duration.Ticks).UtcDateTime;
+                await _expirationQueue.UpdateExpirationAsync(key, expiration.Ticks, cancellationToken).ConfigureAwait(false);
+                record.ExpirationUtc = expiration;
                 return NextToken();
             }
             return CurrentToken();
         }
 
+        /// <inheritdoc />
+        public ValueTask<IReadOnlyCollection<LockInfo>> GetCurrentLocksAsync(CancellationToken cancellationToken)
+            => new ValueTask<IReadOnlyCollection<LockInfo>>(_locks
+                .ToArray()
+                .Select(x => new LockInfo(x.Key, x.Value.Semaphore.CurrentCount <= 0, x.Value.Token, x.Value.ExpirationUtc))
+                .ToList());
+
         // for testing
-        protected virtual internal void SaveToken(string key, long token)
-            => _lockEpochs[key] = token;
+        protected virtual internal long SaveToken(LockStoreRecord pair, long token) => pair.Token = token;
+        protected virtual internal long NextToken() => Interlocked.Increment(ref _currentToken);
+        protected virtual internal long CurrentToken() => Volatile.Read(ref _currentToken);
 
-        protected virtual internal long NextToken()
-            => Interlocked.Increment(ref _currentTocken);
-
-        protected virtual internal long CurrentToken()
-            => Volatile.Read(ref _currentTocken);
     }
 }

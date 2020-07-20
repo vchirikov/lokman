@@ -5,7 +5,6 @@ module.exports = ctx => {
       content: [
         './../Components/**/*.html',
         './../wwwroot/index.html',
-        './../wwwroot/404.html',
         './../**/*.razor'
       ]
     },

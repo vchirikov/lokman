@@ -47,7 +47,7 @@ namespace Lokman.Tests
             await store.Object.AcquireAsync("foo", default, default).ConfigureAwait(false);
 
             store.Verify(x => x.NextToken(), Times.Once);
-            store.Verify(x => x.SaveToken("foo", It.IsAny<long>()), Times.Once);
+            store.Verify(x => x.SaveToken(It.IsAny<DistributedLockStore.LockStoreRecord>(), It.IsAny<long>()), Times.Once);
         }
 
         [Fact]
@@ -76,8 +76,10 @@ namespace Lokman.Tests
                 CallBase = true,
             };
             var savedToken = 1337;
-            store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveToken("foo", savedToken);
+            var record = new DistributedLockStore.LockStoreRecord();
+            record.Semaphore.Wait(1000);
+            store.Object._locks["foo"] = record;
+            store.Object.SaveToken(record, savedToken);
 
             await store.Object.ReleaseAsync("foo", 1337, default).ConfigureAwait(false);
 
@@ -96,8 +98,10 @@ namespace Lokman.Tests
                 CallBase = true,
             };
             var savedToken = 1337;
-            store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveToken("foo", savedToken);
+            var record = new DistributedLockStore.LockStoreRecord();
+            record.Semaphore.Wait(1000);
+            store.Object._locks["foo"] = record;
+            store.Object.SaveToken(record, savedToken);
 
             await store.Object.ReleaseAsync("foo", 1337, default).ConfigureAwait(false);
 
@@ -115,8 +119,10 @@ namespace Lokman.Tests
                 CallBase = true,
             };
             var savedToken = 1337;
-            store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveToken("foo", savedToken);
+            var record = new DistributedLockStore.LockStoreRecord();
+            record.Semaphore.Wait(1000);
+            store.Object._locks["foo"] = record;
+            store.Object.SaveToken(record, savedToken);
 
             await store.Object.ReleaseAsync("foo", 31337, default).ConfigureAwait(false);
 
@@ -144,8 +150,10 @@ namespace Lokman.Tests
                 CallBase = true,
             };
             var savedToken = 1337;
-            store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveToken("foo", savedToken);
+            var record = new DistributedLockStore.LockStoreRecord();
+            record.Semaphore.Wait(1000);
+            store.Object._locks["foo"] = record;
+            store.Object.SaveToken(record, savedToken);
 
             await store.Object.UpdateAsync("foo", 1337, TimeSpan.FromTicks(31337), default).ConfigureAwait(false);
 
@@ -164,8 +172,10 @@ namespace Lokman.Tests
                 CallBase = true,
             };
             var savedToken = 1337;
-            store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveToken("foo", savedToken);
+            var record = new DistributedLockStore.LockStoreRecord();
+            record.Semaphore.Wait(1000);
+            store.Object._locks["foo"] = record;
+            store.Object.SaveToken(record, savedToken);
 
             await store.Object.UpdateAsync("foo", 1337, TimeSpan.FromTicks(31337), default).ConfigureAwait(false);
 
@@ -188,8 +198,10 @@ namespace Lokman.Tests
                 CallBase = true,
             };
             var savedToken = 1337;
-            store.Object._locks["foo"] = new SemaphoreSlim(0, 1);
-            store.Object.SaveToken("foo", savedToken);
+            var record = new DistributedLockStore.LockStoreRecord();
+            record.Semaphore.Wait(1000);
+            store.Object._locks["foo"] = record;
+            store.Object.SaveToken(record, savedToken);
 
             await store.Object.UpdateAsync("foo", 31337, TimeSpan.FromTicks(31337), default).ConfigureAwait(false);
 
