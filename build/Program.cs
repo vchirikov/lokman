@@ -160,7 +160,7 @@ namespace Build
             try
             {
                 /// <see cref="RunTargetsAndExitAsync"/> will hang on ctrl+c, idk why, but it's happend after close target
-                await RunTargetsWithoutExitingAsync(arguments, options, ExceptionFilter).ConfigureAwait(false);
+                await RunTargetsWithoutExitingAsync(arguments, options, ex => ex is OperationCanceledException).ConfigureAwait(false);
             }
             catch (TargetFailedException targetException)
             {
@@ -188,13 +188,6 @@ namespace Build
                 Environment.SetEnvironmentVariable("POWERSHELL_UPDATECHECK_OPTOUT", "1");
                 Environment.SetEnvironmentVariable("DOTNET_CLI_UI_LANGUAGE", "en");
             }
-
-            static bool ExceptionFilter(Exception ex) => ex switch
-            {
-                TargetFailedException => true,
-                OperationCanceledException => true,
-                _ => false
-            };
         }
 
         private static string? TryFindDotNetExePath()
