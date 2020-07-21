@@ -83,7 +83,7 @@ namespace Lokman
             if (!_locks.TryGetValue(key, out var record))
                 ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
 
-            if (record.Token == token)
+            if (record!.Token == token)
             {
                 await _expirationQueue.DequeueAsync(key, cancellationToken).ConfigureAwait(false);
                 record.Semaphore.Release();
@@ -98,8 +98,7 @@ namespace Lokman
             if (!_locks.TryGetValue(key, out var record))
                 ThrowHelper.KeyNotFoundException($"Resource with name '{key}' isn't locked");
 
-
-            if (record.Token == token)
+            if (record!.Token == token)
             {
                 var expiration = _time.UtcNow.AddTicks(duration.Ticks).UtcDateTime;
                 await _expirationQueue.UpdateExpirationAsync(key, expiration.Ticks, cancellationToken).ConfigureAwait(false);
@@ -120,6 +119,5 @@ namespace Lokman
         protected virtual internal long SaveToken(LockStoreRecord pair, long token) => pair.Token = token;
         protected virtual internal long NextToken() => Interlocked.Increment(ref _currentToken);
         protected virtual internal long CurrentToken() => Volatile.Read(ref _currentToken);
-
     }
 }

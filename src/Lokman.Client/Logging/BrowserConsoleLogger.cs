@@ -8,7 +8,7 @@ namespace Lokman.Client
     /// <inheritdoc cref="BrowserConsoleLogger"/>
     public class BrowserConsoleLogger<TCategoryName> : BrowserConsoleLogger, ILogger<TCategoryName>
     {
-        public BrowserConsoleLogger(ILoggingInterop jsInterop) : base(jsInterop, typeof(TCategoryName).FullName) { }
+        public BrowserConsoleLogger(ILoggingInterop jsInterop) : base(jsInterop, typeof(TCategoryName).FullName!) { }
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ namespace Lokman.Client
                 if (last.Key == "{OriginalFormat}")
                 {
                     // with FormattedLogValues will be "[null]" if format is null
-                    var format = last.Value.ToString();
+                    var format = last.Value.ToString()!;
                     // For debug:
                     // Console.WriteLine($"Format: \"{format}\" Dump: {string.Join(", ", list.Select(x => $"{x.Key} = {x.Value ?? "(null)"} "))}");
                     SendLogIntoJs(logLevel, exception, list, format);

@@ -10,7 +10,7 @@
     <Links>
         @{
             // avoid "error RZ9986: Component attributes do not support complex content (mixed C# and markup)"
-            var cssClasses = $"py-1 px-0 lg:px-2 block border-b-2 border-transparent hover:border-{_navBar.BorderColor}-400 ";
+            var cssClasses = $"py-1 px-0 lg:px-2 block border-b-2 border-transparent hover:border-{_navBar?.BorderColor ?? "blue"}-400 ";
             foreach (var link in _links)
             {
                 <li><NavLink class=@cssClasses href="@link.Page" rel="nofollow" target="@(link.OpenInNewTab ? "_blank" : "_self")">@link.Html</NavLink></li>
@@ -23,7 +23,7 @@
 
 @code
 {
-    [NotNull] NavBar? _navBar;
+    NavBar? _navBar;
 
     List<(MarkupString Html, string Page, bool OpenInNewTab)> _links = new List<(MarkupString Html, string Page, bool OpenInNewTab)>()
     {

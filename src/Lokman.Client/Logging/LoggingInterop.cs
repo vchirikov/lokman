@@ -18,7 +18,7 @@ namespace Lokman.Client
             if (jsLogMethod == null)
                 return;
 
-            if (logLevel == LogLevel.Critical && logParts?.Length == 1 && logParts[0] is string formattedMessage)
+            if (logLevel == LogLevel.Critical && logParts.Length == 1 && logParts[0] is string formattedMessage)
             {
                 // Writing to Console.Error should cause the error UI (in #blazor-error-ui) to appear
                 // message will be default, but we can change it if add a js script here
