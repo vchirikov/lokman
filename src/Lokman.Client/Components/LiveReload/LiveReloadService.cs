@@ -28,7 +28,7 @@ namespace Lokman.Client
             : this(
                 httpClient,
                 logger,
-                $"{navigationManager.BaseUri}_framework/_bin/{Assembly.GetExecutingAssembly().Location}",
+                $"{navigationManager.BaseUri}_framework/{Assembly.GetExecutingAssembly().Location}",
                 () => navigationManager.NavigateTo(navigationManager.Uri, forceLoad: true))
         { }
 

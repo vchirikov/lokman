@@ -149,7 +149,7 @@ namespace Build
                             {
                                 File.Move(path, Path.Combine(resultsDirectory, Path.GetFileName(path)), overwrite: true);
                             }
-                            Directory.Delete(Path.GetDirectoryName(paths[0]), true);
+                            Directory.Delete(Path.GetDirectoryName(paths[0])!, true);
                         }
                     }
                 }
