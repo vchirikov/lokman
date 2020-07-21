@@ -8,9 +8,11 @@ module.exports = ctx => {
         './../**/*.razor'
       ]
     },
-    theme: { },
-    variants: { },
-    plugins: []
+    theme: {},
+    variants: {},
+    plugins: [
+      require('@tailwindcss/custom-forms')
+    ]
   });
 };
 

@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <!-- Blazor doesn't support netcoreapp3.1 libraries -->
-    <TargetFramework>netstandard2.1</TargetFramework>
-    <RazorLangVersion>3.0</RazorLangVersion>
+    <TargetFramework>net5.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <UseBlazorWebAssembly>true</UseBlazorWebAssembly>
     <!-- Disable typescript build via msbuild -->
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <PublishDir>$(SolutionDir)public</PublishDir>
@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Build" />
     <PackageReference Include="System.Net.Http.Json" />
     <PackageReference Include="Grpc.Net.Client.Web" />
     <PackageReference Include="Microsoft.Extensions.Http" />

@@ -6,6 +6,7 @@
     "build:Release": "webpack --mode production -p"
   },
   "devDependencies": {
+    "@tailwindcss/custom-forms": "^0.2.1",
     "css-loader": "^3.6.0",
     "cssnano": "^4.1.10",
     "file-loader": "^6.0.0",
