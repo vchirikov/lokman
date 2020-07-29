@@ -32,6 +32,8 @@
     <PackageReference Include="Nerdbank.GitVersioning" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" />
     <PackageReference Include="Roslynator.Analyzers" />
+    <PackageReference Include="Meziantou.Analyzer" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
   </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <Compile Include="$(MSBuildThisFileDirectory)InternalsVisibleTo.cs" Link="Properties/InternalsVisibleTo.cs"/>
