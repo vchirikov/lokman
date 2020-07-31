@@ -6,7 +6,7 @@ using Xunit;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Lokman.Tests
+namespace Lokman.UnitTests
 {
     public class DistributedLockHandleTests
     {

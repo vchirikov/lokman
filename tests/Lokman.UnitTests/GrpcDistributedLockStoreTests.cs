@@ -5,7 +5,7 @@ using Lokman.Protos;
 using System;
 using Google.Protobuf.WellKnownTypes;
 
-namespace Lokman.Tests
+namespace Lokman.UnitTests
 {
     public class GrpcDistributedLockStoreTests
     {

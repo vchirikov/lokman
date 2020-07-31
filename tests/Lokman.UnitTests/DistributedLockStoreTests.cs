@@ -5,7 +5,7 @@ using Xunit;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
-namespace Lokman.Tests
+namespace Lokman.UnitTests
 {
     public class DistributedLockStoreTests
     {

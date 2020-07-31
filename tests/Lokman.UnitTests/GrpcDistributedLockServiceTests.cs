@@ -6,7 +6,7 @@ using Moq;
 using System.Threading;
 using Google.Protobuf.WellKnownTypes;
 
-namespace Lokman.Tests
+namespace Lokman.UnitTests
 {
     public class GrpcDistributedLockServiceTests
     {

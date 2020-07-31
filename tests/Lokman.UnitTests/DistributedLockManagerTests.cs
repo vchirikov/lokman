@@ -5,7 +5,7 @@ using Microsoft.Extensions.ObjectPool;
 using Moq;
 using Xunit;
 
-namespace Lokman.Tests
+namespace Lokman.UnitTests
 {
     public class DistributedLockManagerTests
     {

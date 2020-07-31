@@ -7,7 +7,7 @@ using Moq;
 using System;
 using System.Linq;
 
-namespace Lokman.Tests
+namespace Lokman.UnitTests
 {
     public class ExpirationQueueTests
     {
