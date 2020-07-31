@@ -30,6 +30,8 @@ namespace Lokman.Server
             });
             services.AddGrpcSwagger();
 
+            services.
+
             services.AddEventLogging();
 
             // TODO: place these lines to new extension method in Lokman project
