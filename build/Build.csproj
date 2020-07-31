@@ -12,6 +12,7 @@
     <PackageReference Include="Bullseye" />
     <PackageReference Include="CliWrap" />
     <PackageReference Include="System.CommandLine.DragonFruit" />
+    <PackageReference Include="Crayon" />
   </ItemGroup>
   <ItemGroup>
     <UpToDateCheckInput Condition="Exists('..\version.json')" Include="..\version.json" />

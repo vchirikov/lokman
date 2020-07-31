@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Bullseye;
 using CliWrap;
 using CliWrap.Buffered;
+using Crayon;
 using static Bullseye.Targets;
 
 namespace Build
@@ -52,6 +53,7 @@ namespace Build
             )
         {
             SetEnvVariables();
+            PrintHeader();
 
             var options = new Options {
                 Clear = clear,
@@ -85,15 +87,25 @@ namespace Build
 
             Target("restore", async () => {
                 var isPublicRelease = bool.Parse(Environment.GetEnvironmentVariable("NBGV_PublicRelease") ?? "false");
-                var cmd = await Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +
+
+                var npm = GetCommandFullPath("npm") ?? throw new FileNotFoundException("'npm' command isn't found.");
+
+                var dotnetRestore = Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +
                     "-t:Restore " +
                     "-p:RestoreForce=true " +
                     "-p:RestoreIgnoreFailedSources=True " +
                     $"-p:Configuration={configuration} " +
                     // for Nerdbank.GitVersioning
                     $"-p:PublicRelease={isPublicRelease} "
-                    ).ToConsole()
-                    .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+                    ).ToConsole("dotnet restore: ".Green())
+                    .ExecuteBufferedAsync(cancellationToken).Task;
+
+                var npmRestore = Cli.Wrap(npm).WithArguments("install --no-fund --progress false --loglevel error")
+                    .WithWorkingDirectory(Path.Combine("src", "Lokman.Server", "ClientApp"))
+                    .ToConsole("npm install: ".Blue())
+                    .ExecuteBufferedAsync(cancellationToken).Task;
+
+                await Task.WhenAll(dotnetRestore, npmRestore).ConfigureAwait(false);
             });
 
             Target("build", async () => {
@@ -166,16 +178,12 @@ namespace Build
             {
                 if (targetException.InnerException is OperationCanceledException operationCanceledException)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine(operationCanceledException.Message);
-                    Console.ResetColor();
+                    Console.WriteLine(operationCanceledException.Message.Red());
                 }
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Unhandled exception: {ex}");
-                Console.ResetColor();
+                Console.WriteLine($"Unhandled exception: {ex}".Red());
             }
 
             static void SetEnvVariables()
@@ -188,7 +196,64 @@ namespace Build
                 Environment.SetEnvironmentVariable("POWERSHELL_UPDATECHECK_OPTOUT", "1");
                 Environment.SetEnvironmentVariable("DOTNET_CLI_UI_LANGUAGE", "en");
             }
+
+            static void PrintHeader()
+            {
+
+                const string header = "|   _  |  ._ _   _. ._  \n|_ (_) |< | | | (_| | |";
+                const double freq = 0.1;
+                var rainbow = new Rainbow(freq);
+                for (var i = 0; i < header.Length; i++)
+                {
+                    Console.Write(rainbow.Next().Text(header[i].ToString()));
+                    if (header[i] == '\n')
+                        rainbow = new Rainbow(freq);
+                }
+
+                Console.Write("\n");
+            }
         }
+
+        /// <summary>
+        /// Returns full path for short commands like "npm" (on windows it will be 'C:\Program Files\nodejs\npm.cmd' for example)
+        /// or null if full path not found
+        /// </summary>
+        internal static string? GetCommandFullPath(string cmd)
+        {
+            if (File.Exists(cmd))
+            {
+                return Path.GetFullPath(cmd);
+            }
+
+            var values = Environment.GetEnvironmentVariable("PATH");
+            if (values == null)
+                return null;
+
+            var isWindows = Environment.OSVersion.Platform != PlatformID.Unix;
+
+            foreach (var path in values.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var fullPath = Path.Combine(path, cmd);
+                if (isWindows)
+                {
+                    if (File.Exists(fullPath + ".exe"))
+                        return fullPath + ".exe";
+                    else if (File.Exists(fullPath + ".cmd"))
+                        return fullPath + ".cmd";
+                    else if (File.Exists(fullPath + ".bat"))
+                        return fullPath + ".bat";
+                }
+                else
+                {
+                    if (File.Exists(fullPath + ".sh"))
+                        return fullPath + ".sh";
+                }
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+            return null;
+        }
+
 
         private static string? TryFindDotNetExePath()
         {
