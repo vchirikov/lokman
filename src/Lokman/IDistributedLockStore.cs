@@ -109,7 +109,7 @@ namespace Lokman
         }
 
         /// <inheritdoc />
-        public ValueTask<IReadOnlyCollection<LockInfo>> GetCurrentLocksAsync(CancellationToken cancellationToken)
+        public ValueTask<IReadOnlyCollection<LockInfo>> GetCurrentLocksAsync(CancellationToken cancellationToken = default)
             => new ValueTask<IReadOnlyCollection<LockInfo>>(_locks
                 .ToArray()
                 .Select(x => new LockInfo(x.Key, x.Value.Semaphore.CurrentCount <= 0, x.Value.Token, x.Value.ExpirationUtc))

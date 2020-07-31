@@ -102,7 +102,7 @@ namespace Lokman
                     {
                         try
                         {
-                            await _store.ReleaseAsync(resource, token).ConfigureAwait(false);
+                            await _store.ReleaseAsync(resource, token, default).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {

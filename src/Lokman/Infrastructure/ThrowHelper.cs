@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+#pragma warning disable MA0015 // Specify the parameter name
 
 namespace Lokman
 {
@@ -14,8 +15,7 @@ namespace Lokman
         {
             if (message is null)
                 throw new InvalidOperationException();
-            else
-                throw new InvalidOperationException(message);
+            throw new InvalidOperationException(message);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

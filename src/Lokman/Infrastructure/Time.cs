@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 
 namespace Lokman
 {
+    // we want follow Task.Delay method declaration
+    #pragma warning disable VSTHRD200 // Use "Async" suffix for async methods
+
     internal interface ITime
     {
         /// <inheritdoc cref="DateTimeOffset.UtcNow" />

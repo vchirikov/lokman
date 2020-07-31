@@ -9,7 +9,7 @@
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- CS1573: Parameter 'parameter' has no matching param tag in the XML comment for 'parameter' (but other parameters do) -->
     <!-- CS1591: Missing XML comment for publicly visible type or member -->
-    <NoWarn>RCS1047;CS1573;CS1591;</NoWarn>
+    <NoWarn>$(NoWarn);RCS1047;CS1573;CS1591;</NoWarn>
     <!-- Include the PDB in the built .nupkg -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <IncludeSymbols>false</IncludeSymbols>

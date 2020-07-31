@@ -22,7 +22,8 @@
     <DebugSymbols>true</DebugSymbols>
     <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
     <!-- NU5048: The 'PackageIconUrl'/'iconUrl' element is deprecated -->
-    <NoWarn>$(NoWarn);NU5105;NU5048;</NoWarn>
+    <!-- MA0048: File name must match type name -->
+    <NoWarn>$(NoWarn);MA0048;NU5105;NU5048;</NoWarn>
     <GenerateFullPaths Condition="'$(TERM_PROGRAM)' == 'vscode'">true</GenerateFullPaths>
   </PropertyGroup>
   <!-- Coverlet bug with SourceLink workaround  https://github.com/tonerdo/coverlet/issues/363 and https://github.com/dotnet/sourcelink/issues/91 -->

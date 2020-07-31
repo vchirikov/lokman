@@ -22,7 +22,7 @@ namespace Lokman
         public static void LogEvent(this IEventLogger logger, LogLevel level, string eventName, Exception? exception, object dataObj)
         {
             var reader = EventLogger._objectReaderGenerator.GetReader(dataObj.GetType());
-            var dict = new Dictionary<string, object>();
+            var dict = new Dictionary<string, object>(StringComparer.Ordinal);
             reader(dict, dataObj);
             logger.LogEvent(level, eventName, exception, data: dict);
         }

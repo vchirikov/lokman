@@ -16,6 +16,8 @@ namespace Lokman
         ValueTask UpdateExpirationAsync(string key, long ticks, CancellationToken cancellationToken = default);
     }
 
+#pragma warning disable MA0045 // Do not use blocking call (make method async) | we use dedicated thread
+#pragma warning disable MA0055 // Do not use destructor | have unmanaged objects
     public class ExpirationQueue : IExpirationQueue, IAsyncDisposable, IDisposable
     {
         /// <summary>
@@ -49,7 +51,7 @@ namespace Lokman
         private readonly SemaphoreSlim _updateLock = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _deleteLock = new SemaphoreSlim(1, 1);
 
-        private readonly ManualResetEventSlim _wakeupEvent = new ManualResetEventSlim(false);
+        private readonly ManualResetEventSlim _wakeupEvent = new ManualResetEventSlim(initialState: false);
 
         private readonly Predicate<ExpirationRecord> _cachedDeletePredicate;
 
@@ -134,7 +136,7 @@ namespace Lokman
                 catch (Exception ex)
                 {
                     // ToDo: add a better logging here
-                    Debug.WriteLine($"Action of ({key}, {ticks}) throws exception: {ex}");
+                    Debug.WriteLine($"Action of ({key}, {ticks.ToString(CultureInfo.InvariantCulture)}) throws exception: {ex}");
                 }
             }
 
@@ -143,62 +145,62 @@ namespace Lokman
                 _actions.RemoveRange(0, i);
 
             return ticksToNextFire;
+        }
 
-            void ProcessSets()
+        private void ProcessSets()
+        {
+            if (_cancellationTokenSource.Token.IsCancellationRequested)
+                return;
+
+            _enqueueLock.Wait(_cancellationTokenSource.Token);
+            try
             {
-                if (_cancellationTokenSource.Token.IsCancellationRequested)
-                    return;
-
-                _enqueueLock.Wait(_cancellationTokenSource.Token);
-                try
+                if (_enqueueSet.Count > 0)
                 {
-                    if (_enqueueSet.Count > 0)
-                    {
-                        _actions.AddRange(_enqueueSet);
-                        _enqueueSet.Clear();
-                        _wakeupEvent.Reset();
-                    }
+                    _actions.AddRange(_enqueueSet);
+                    _enqueueSet.Clear();
+                    _wakeupEvent.Reset();
                 }
-                finally
-                {
-                    _enqueueLock.Release();
-                }
-
-                _deleteLock.Wait(_cancellationTokenSource.Token);
-                try
-                {
-                    _actions.RemoveAll(_cachedDeletePredicate);
-                }
-                finally
-                {
-                    _deleteLock.Release();
-                }
-
-                _updateLock.Wait(_cancellationTokenSource.Token);
-                try
-                {
-                    if (_updateSet.Count > 0)
-                    {
-                        foreach (var (key, newTicks) in _updateSet)
-                        {
-                            for (int j = 0; j < _actions.Count; j++)
-                            {
-                                var item = _actions[j];
-                                if (!string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
-                                    continue;
-                                item.Ticks = newTicks;
-                            }
-                        }
-                        _updateSet.Clear();
-                        _wakeupEvent.Reset();
-                    }
-                }
-                finally
-                {
-                    _updateLock.Release();
-                }
-                _actions.Sort();
             }
+            finally
+            {
+                _enqueueLock.Release();
+            }
+
+            _deleteLock.Wait(_cancellationTokenSource.Token);
+            try
+            {
+                _actions.RemoveAll(_cachedDeletePredicate);
+            }
+            finally
+            {
+                _deleteLock.Release();
+            }
+
+            _updateLock.Wait(_cancellationTokenSource.Token);
+            try
+            {
+                if (_updateSet.Count > 0)
+                {
+                    foreach (var (key, newTicks) in _updateSet)
+                    {
+                        for (int j = 0; j < _actions.Count; j++)
+                        {
+                            var item = _actions[j];
+                            if (!string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            item.Ticks = newTicks;
+                        }
+                    }
+                    _updateSet.Clear();
+                    _wakeupEvent.Reset();
+                }
+            }
+            finally
+            {
+                _updateLock.Release();
+            }
+            _actions.Sort();
         }
 
         public async ValueTask EnqueueAsync(string key, long ticks, Action action, CancellationToken cancellationToken = default)
@@ -271,14 +273,14 @@ namespace Lokman
 
         public void Dispose()
         {
-            Dispose(true);
+            Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
 
         public async ValueTask DisposeAsync()
         {
             await DisposeAsyncCore().ConfigureAwait(false);
-            Dispose(false);
+            Dispose(disposing: false);
             GC.SuppressFinalize(this);
         }
 
@@ -307,9 +309,9 @@ namespace Lokman
             public int CompareTo(object? obj) => CompareTo(obj as ExpirationRecord);
             public void Deconstruct(out string key, out long ticks, out Action action) => (key, ticks, action) = (Key, Ticks, Action);
             public override bool Equals(object? obj) => Equals(obj as ExpirationRecord);
-            public bool Equals([AllowNull] ExpirationRecord other) => other != null && Key == other.Key && Ticks == other.Ticks;
+            public bool Equals([AllowNull] ExpirationRecord other) => other != null && string.Equals(Key, other.Key, StringComparison.OrdinalIgnoreCase) && Ticks == other.Ticks;
             public override int GetHashCode() => HashCode.Combine(Key, Ticks);
-            public override string ToString() => $"{Key ?? "null"} - {Ticks}";
+            public override string ToString() => $"{Key ?? "null"} - {Ticks.ToString(CultureInfo.InvariantCulture)}";
         }
     }
 }
