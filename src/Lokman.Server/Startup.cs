@@ -74,7 +74,9 @@ namespace Lokman.Server
             app.UseGrpcWeb(new GrpcWebOptions() { DefaultEnabled = true });
 
             app.UseEndpoints(endpoints => {
-                endpoints.MapGrpcService<GrpcDistributedLockService>().EnableGrpcWeb();
+                endpoints.MapGrpcService<GrpcDistributedLockService>()
+                    .RequireCors("AllowAll")
+                    .EnableGrpcWeb();
                 //endpoints.MapFallbackToPage("404.html");
             });
             if (!env.IsDevelopment())

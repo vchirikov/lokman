@@ -75,19 +75,38 @@ namespace Build
                 ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
 
             Target("watch", async () => {
-                var dotnetWatch = Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "Lokman.Server")} run -- -c DEBUG")
-                    .WithEnvironmentVariables(new Dictionary<string, string>() { ["ASPNETCORE_ENVIRONMENT"] = "Development" })
-                    .ToConsole(prefix: "dotnet: ".Green())
-                    .ExecuteAsync(cancellationToken).Task;
 
-                var npm = GetCommandFullPath("npm") ?? throw new FileNotFoundException("'npm' command isn't found.");
+                var node = TryFindCommandPath("node")
+                    ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
 
-                var webpackDevServer = Cli.Wrap(npm).WithArguments($"start")
-                    .WithWorkingDirectory(Path.Combine("src", "Lokman.Server", "ClientApp"))
-                    .ToConsole("webpack: ".Blue())
-                    .ExecuteAsync(cancellationToken).Task;
+                // if one of process exits then close another on Cancel()
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                try
+                {
+                    var dotnetWatch = Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "Lokman.Server")} run -- -c DEBUG")
+                        .WithEnvironmentVariables(new Dictionary<string, string>() { ["ASPNETCORE_ENVIRONMENT"] = "Development" })
+                        .ToConsole(prefix: "dotnet: ".Green())
+                        .ExecuteAsync(cts.Token);
 
-                await Task.WhenAll(dotnetWatch, webpackDevServer).ConfigureAwait(false);
+                    // 'npm start' runs npm-cli.js with react-app-rewired and for some reason
+                    // Process.Kill(entireProcessTree: true) doesn't work well with it and inner process doesn't close
+                    // this is workaround for this.
+                    var webpackDevServer = Cli.Wrap(node)
+                        .WithArguments(Path.Combine("node_modules", "react-app-rewired", "bin", "index.js") + " start")
+                        .WithWorkingDirectory(Path.Combine("src", "Lokman.Server", "ClientApp"))
+                        .WithEnvironmentVariables(new Dictionary<string, string>() { ["CI"] = "true" })
+                        .ToConsole("webpack: ".Blue())
+                        .ExecuteAsync(cts.Token);
+
+                    await Task.WhenAny(dotnetWatch.Task, webpackDevServer.Task).ConfigureAwait(false);
+                }
+                finally
+                {
+                    if (!cts.IsCancellationRequested)
+                        cts.Cancel();
+                    cts.Dispose();
+                }
+                Console.WriteLine("The watching is over".BrightYellow());
             });
 
             Target("restore-tools", async () => {
@@ -98,25 +117,31 @@ namespace Build
 
             Target("restore", async () => {
                 var isPublicRelease = bool.Parse(Environment.GetEnvironmentVariable("NBGV_PublicRelease") ?? "false");
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                try
+                {
+                    var dotnetRestore = Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +
+                        "-t:Restore " +
+                        "-p:RestoreForce=true " +
+                        "-p:RestoreIgnoreFailedSources=True " +
+                        $"-p:Configuration={configuration} " +
+                        // for Nerdbank.GitVersioning
+                        $"-p:PublicRelease={isPublicRelease} "
+                        ).ToConsole("dotnet restore: ".Green())
+                        .ExecuteAsync(cts.Token).Task;
 
-                var npm = GetCommandFullPath("npm") ?? throw new FileNotFoundException("'npm' command isn't found.");
+                    var npmRestore = WrapNpmWithArguments("install --no-fund --progress false --loglevel error")
+                        .WithWorkingDirectory(Path.Combine("src", "Lokman.Server", "ClientApp"))
+                        .ToConsole("npm install: ".Blue())
+                        .ExecuteAsync(cts.Token).Task;
 
-                var dotnetRestore = Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +
-                    "-t:Restore " +
-                    "-p:RestoreForce=true " +
-                    "-p:RestoreIgnoreFailedSources=True " +
-                    $"-p:Configuration={configuration} " +
-                    // for Nerdbank.GitVersioning
-                    $"-p:PublicRelease={isPublicRelease} "
-                    ).ToConsole("dotnet restore: ".Green())
-                    .ExecuteAsync(cancellationToken).Task;
-
-                var npmRestore = Cli.Wrap(npm).WithArguments("install --no-fund --progress false --loglevel error")
-                    .WithWorkingDirectory(Path.Combine("src", "Lokman.Server", "ClientApp"))
-                    .ToConsole("npm install: ".Blue())
-                    .ExecuteAsync(cancellationToken).Task;
-
-                await Task.WhenAll(dotnetRestore, npmRestore).ConfigureAwait(false);
+                    await Task.WhenAll(dotnetRestore, npmRestore).ConfigureAwait(false);
+                }
+                finally
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                }
             });
 
             Target("build", async () => {
@@ -229,7 +254,7 @@ namespace Build
         /// Returns full path for short commands like "npm" (on windows it will be 'C:\Program Files\nodejs\npm.cmd' for example)
         /// or null if full path not found
         /// </summary>
-        internal static string? GetCommandFullPath(string cmd)
+        internal static string? TryFindCommandPath(string cmd)
         {
             if (File.Exists(cmd))
             {
@@ -265,6 +290,24 @@ namespace Build
             return null;
         }
 
+        private static Command WrapNpmWithArguments(string args)
+        {
+            // On Windows, the node executable is a .cmd file, so it can't be executed directly
+            // (except with UseShellExecute=true, but that's no good, because it prevents capturing stdio).
+            // So we need to invoke it via "cmd /c".
+            var isWindows = false;
+            //var isWindows = Environment.OSVersion.Platform != PlatformID.Unix;
+            var cmdPath = (isWindows ? TryFindCommandPath("cmd") : TryFindCommandPath("npm"))
+                ?? throw new FileNotFoundException("'npm' command isn't found.");
+
+            var cmdArgs = isWindows
+                ? $"/C /D /U \"npm {args.Replace("\\", "\\\\").Replace("\"", "\\\"")}\""
+                : args;
+            // https://github.com/Tyrrrz/CliWrap/issues/37
+            // can't work with it.
+            var cmd = Cli.Wrap(cmdPath).WithArguments(cmdArgs);
+            return cmd;
+        }
 
         private static string? TryFindDotNetExePath()
         {
