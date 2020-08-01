@@ -1,7 +1,4 @@
-/src/Lokman.Client/Webpack/**/*.js
-!/src/Lokman.Client/Webpack/*.config.js
-/src/Lokman.Client/wwwroot/**/dist/**
-public/
+src/Lokman.Server/ClientApp/build/
 
 **/coverage.json
 # Can contain personal info

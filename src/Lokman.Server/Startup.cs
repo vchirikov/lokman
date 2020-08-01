@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,9 +33,15 @@ namespace Lokman.Server
             });
             services.AddGrpcSwagger();
 
+            services.AddCors(o => o.AddPolicy("AllowAll", builder => {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader()
+                       .WithExposedHeaders("Grpc-Status", "Grpc-Message", "Grpc-Encoding", "Grpc-Accept-Encoding");
+            }));
             // In production, the React files will be served from this directory
             services.AddSpaStaticFiles(spa => spa.RootPath = Path.Combine("ClientApp/build"));
-
+            services.Configure<ForwardedHeadersOptions>(options => options.ForwardedHeaders = ForwardedHeaders.All);
             services.AddEventLogging();
 
             // TODO: place these lines to new extension method in Lokman project
@@ -49,6 +56,7 @@ namespace Lokman.Server
             app.UseResponseCompression();
             if (env.IsDevelopment())
             {
+                app.UseForwardedHeaders();
                 app.UseDeveloperExceptionPage();
             }
 
@@ -62,6 +70,7 @@ namespace Lokman.Server
             });
 
             app.UseRouting();
+            app.UseCors();
             app.UseGrpcWeb(new GrpcWebOptions() { DefaultEnabled = true });
 
             app.UseEndpoints(endpoints => {
