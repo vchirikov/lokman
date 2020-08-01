@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -30,7 +32,8 @@ namespace Lokman.Server
             });
             services.AddGrpcSwagger();
 
-            services.
+            // In production, the React files will be served from this directory
+            services.AddSpaStaticFiles(spa => spa.RootPath = Path.Combine("ClientApp/build"));
 
             services.AddEventLogging();
 
@@ -47,12 +50,10 @@ namespace Lokman.Server
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseWebAssemblyDebugging();
             }
 
-            // Blazor files should be before UseStaticFiles for `blazor-environment` header
-            app.UseBlazorFrameworkFiles();
             app.UseStaticFiles();
+            app.UseSpaStaticFiles();
 
             // for swagger mostly
             app.UseSwagger();
@@ -65,8 +66,15 @@ namespace Lokman.Server
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapGrpcService<GrpcDistributedLockService>().EnableGrpcWeb();
-                endpoints.MapFallbackToFile("index.html");
+                //endpoints.MapFallbackToPage("404.html");
             });
+            if (!env.IsDevelopment())
+            {
+                app.UseSpa(spa => {
+                    spa.Options.SourcePath = "ClientApp";
+                    // UseProxyToSpaDevelopmentServer is too slow for react-fast reload, better doing another way
+                });
+            }
         }
     }
 }
