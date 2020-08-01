@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,6 +53,7 @@ namespace Build
             string configuration = "Debug"
             )
         {
+            Console.OutputEncoding = Encoding.UTF8;
             SetEnvVariables();
             PrintHeader();
 
@@ -73,16 +75,25 @@ namespace Build
                 ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
 
             Target("watch", async () => {
-                var cmd = await Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "Lokman.Server")} run -- -c DEBUG")
+                var dotnetWatch = Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "Lokman.Server")} run -- -c DEBUG")
                     .WithEnvironmentVariables(new Dictionary<string, string>() { ["ASPNETCORE_ENVIRONMENT"] = "Development" })
-                    .ToConsole()
-                    .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+                    .ToConsole(prefix: "dotnet: ".Green())
+                    .ExecuteAsync(cancellationToken).Task;
 
+                var npm = GetCommandFullPath("npm") ?? throw new FileNotFoundException("'npm' command isn't found.");
+
+                var webpackDevServer = Cli.Wrap(npm).WithArguments($"start")
+                    .WithWorkingDirectory(Path.Combine("src", "Lokman.Server", "ClientApp"))
+                    .ToConsole("webpack: ".Blue())
+                    .ExecuteAsync(cancellationToken).Task;
+
+                await Task.WhenAll(dotnetWatch, webpackDevServer).ConfigureAwait(false);
             });
 
             Target("restore-tools", async () => {
-                var cmd = await Cli.Wrap(dotnet).WithArguments($"tool restore --ignore-failed-sources").ToConsole()
-                    .ExecuteBufferedAsync().Task.ConfigureAwait(false);
+                await Cli.Wrap(dotnet).WithArguments($"tool restore --ignore-failed-sources")
+                   .ToConsole()
+                   .ExecuteAsync().Task.ConfigureAwait(false);
             });
 
             Target("restore", async () => {
@@ -98,20 +109,20 @@ namespace Build
                     // for Nerdbank.GitVersioning
                     $"-p:PublicRelease={isPublicRelease} "
                     ).ToConsole("dotnet restore: ".Green())
-                    .ExecuteBufferedAsync(cancellationToken).Task;
+                    .ExecuteAsync(cancellationToken).Task;
 
                 var npmRestore = Cli.Wrap(npm).WithArguments("install --no-fund --progress false --loglevel error")
                     .WithWorkingDirectory(Path.Combine("src", "Lokman.Server", "ClientApp"))
                     .ToConsole("npm install: ".Blue())
-                    .ExecuteBufferedAsync(cancellationToken).Task;
+                    .ExecuteAsync(cancellationToken).Task;
 
                 await Task.WhenAll(dotnetRestore, npmRestore).ConfigureAwait(false);
             });
 
             Target("build", async () => {
-                var cmd = await Cli.Wrap(dotnet).WithArguments($"build -noLogo -c {configuration}")
+                await Cli.Wrap(dotnet).WithArguments($"build -noLogo -c {configuration}")
                     .ToConsole()
-                    .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+                    .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
             });
 
             Target("coverage", async () => {
