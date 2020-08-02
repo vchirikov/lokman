@@ -3,8 +3,6 @@ const { override, addBabelPlugin, addWebpackPlugin, addPostcssPlugins, overrideD
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
-process.version = "v9.999.999";
-
 const addProxy = () => (config) => {
   // https://webpack.js.org/configuration/dev-server/
   return {

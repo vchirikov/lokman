@@ -1,10 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './style/spinkit.css';
-import './style/tailwind.css';
+import 'style/spinkit.css';
+import 'style/tailwind.css';
 import '../node_modules/fork-awesome/css/fork-awesome.min.css';
 import * as serviceWorker from './serviceWorker';
-import App from './App';
+import App from 'components/App/App';
 
 ReactDOM.render(
   <React.StrictMode>
