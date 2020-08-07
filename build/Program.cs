@@ -207,7 +207,7 @@ namespace Build
 
             try
             {
-                /// <see cref="RunTargetsAndExitAsync"/> will hang on ctrl+c, idk why, but it's happend after close target
+                /// <see cref="RunTargetsAndExitAsync"/> will hang Target on ctrl+c
                 await RunTargetsWithoutExitingAsync(arguments, options, ex => ex is OperationCanceledException).ConfigureAwait(false);
             }
             catch (TargetFailedException targetException)

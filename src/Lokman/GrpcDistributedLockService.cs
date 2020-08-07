@@ -36,7 +36,7 @@ namespace Lokman
                 IsLocked = x.IsLocked,
                 Expiration = Timestamp.FromDateTime(x.ExpirationUtc),
                 Key = x.Key,
-                Token = x.Token
+                Token = x.Token,
             }));
             return response;
         }

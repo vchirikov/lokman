@@ -23,6 +23,10 @@ namespace Lokman
     {
         public class LockStoreRecord
         {
+            /// <summary>
+            /// SemaphoreSlim doesn't guarantee FIFO ordering in some cases (if you use sync code for example),
+            /// so maybe we need to use AsyncSemaphore from vs-threading
+            /// </summary>
             public SemaphoreSlim Semaphore = new SemaphoreSlim(1, 1);
             public long Token = -1;
             /// <summary>
