@@ -27,7 +27,7 @@
     <PackageReference Update="Grpc.Tools" Version="$(GrpcVersion)" PrivateAssets="all" />
     <!-- for Microsoft.AspNetCore.Grpc.HttpApi https://github.com/protocolbuffers/protobuf/issues/6956  -->
     <PackageReference Update="Google.Api.CommonProtos" Version="2.1.0" />
-    <PackageReference Update="Microsoft.AspNetCore.Grpc.HttpApi" Version="0.1.0-alpha.20322.1" />
+    <PackageReference Update="Microsoft.AspNetCore.Grpc.HttpApi" Version="0.1.0-alpha.20410.1" />
     <PackageReference Update="Microsoft.AspNetCore.Grpc.Swagger" Version="0.1.0-alpha.20322.1" />
 
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)" />
