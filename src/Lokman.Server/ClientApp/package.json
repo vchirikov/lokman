@@ -16,6 +16,7 @@
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
+    "@types/google-protobuf": "^3.7.2",
     "@types/jest": "^24.9.1",
     "@types/node": "^12.12.53",
     "@types/react": "^16.9.44",
@@ -25,6 +26,8 @@
     "cssnano": "^4.1.10",
     "customize-cra": "^1.0.0",
     "fork-awesome": "github:ForkAwesome/Fork-Awesome",
+    "google-protobuf": "^3.12.4",
+    "grpc-web": "^1.2.0",
     "react": "^16.13.1",
     "react-app-rewired": "^2.1.6",
     "react-dom": "^16.13.1",
@@ -37,7 +40,10 @@
     "webpack": "^4.44.0"
   },
   "eslintConfig": {
-    "extends": "react-app"
+    "extends": "react-app",
+    "ignorePatterns": [
+      "**/*_pb.js"
+    ]
   },
   "browserslist": {
     "production": [

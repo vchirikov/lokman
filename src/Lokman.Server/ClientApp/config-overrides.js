@@ -20,7 +20,7 @@ const addProxy = () => (config) => {
     http2: false,
     proxy: [{
       // https://github.com/chimurai/http-proxy-middleware#context-matching
-      context: ['/swagger', '/v1'],
+      context: ['/swagger', '/v1', '/lokman.DistributedLockService'],
       // grpc with proxy can't be used because http2 proxy isn't supported.
       // issue for tracking: https://github.com/chimurai/http-proxy-middleware/issues/426
       target: 'http://localhost:1337',

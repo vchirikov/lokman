@@ -18,7 +18,7 @@ if (isDevelopment && module.hot) {
 }
 
 export type AppDispatch = typeof store.dispatch
-export type AppThunk = ThunkAction<void, AppState, unknown, Action<string>>
+export type AppThunk<ReturnType = void> = ThunkAction<ReturnType, AppState, unknown, Action<string>>
 
 // Our typed helpers for RTK and the company
 export const useAppDispatch = () => useDispatch<AppDispatch>();

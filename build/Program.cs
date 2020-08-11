@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -72,12 +73,43 @@ namespace Build
             };
 
             var dotnet = TryFindDotNetExePath()
-                ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
+                ?? throw new ExceptionWithoutStack(new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable."));
+
+            Target("proto", async () => {
+                var protoc = TryFindCommandPath("protoc")
+                    ?? throw new ExceptionWithoutStack(new FileNotFoundException("'protoc' command isn't found. " +
+                        "Install and put into PATH env varibale protoc from https://github.com/protocolbuffers/protobuf/releases"));
+
+                var protocGrpc = TryFindCommandPath("protoc-gen-grpc-web")
+                    ?? throw new ExceptionWithoutStack(new FileNotFoundException("'protoc-gen-grpc-web' protoc plugin isn't found. " +
+                        "Install and put into PATH env varibale from https://github.com/grpc/grpc-web#code-generator-plugin.\n" +
+                        "Don't forgot rename file to 'protoc-gen-grpc-web' or 'protoc-gen-grpc-web.exe'"));
+
+
+                var path = Path.GetFullPath(Path.Combine("src", "Protos"));
+                var outputPath = Path.Combine("src", "Lokman.Server", "ClientApp", "src", "apis");
+
+                if (!Directory.Exists(outputPath))
+                    Directory.CreateDirectory(outputPath);
+
+                foreach (var filePath in Directory.EnumerateFiles(path, "*.proto", SearchOption.AllDirectories))
+                {
+                    /// <see href="https://github.com/grpc/grpc-web#typescript-support" />
+                    await Cli.Wrap(protoc).WithArguments($"{filePath} " +
+                            $"--proto_path={path} " +
+                            $"--error_format=msvs " +
+                            $"--js_out=import_style=commonjs:{outputPath} " +
+                            $"--grpc-web_out=import_style=typescript,mode=grpcwebtext:{outputPath}  " +
+                            $"--plugin=protoc-gen-grpc-web={protocGrpc}")
+                        .ToConsole(prefix: "protoc: ".Cyan())
+                        .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
+                }
+
+            });
 
             Target("watch", async () => {
-
                 var node = TryFindCommandPath("node")
-                    ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
+                    ?? throw new ExceptionWithoutStack(new FileNotFoundException("'node' command isn't found. Install nodejs from https://nodejs.org/"));
 
                 // if one of process exits then close another on Cancel()
                 var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -208,13 +240,13 @@ namespace Build
             try
             {
                 /// <see cref="RunTargetsAndExitAsync"/> will hang Target on ctrl+c
-                await RunTargetsWithoutExitingAsync(arguments, options, ex => ex is OperationCanceledException).ConfigureAwait(false);
+                await RunTargetsWithoutExitingAsync(arguments, options, ex => ex is OperationCanceledException || ex is ExceptionWithoutStack).ConfigureAwait(false);
             }
             catch (TargetFailedException targetException)
             {
-                if (targetException.InnerException is OperationCanceledException operationCanceledException)
+                if (targetException.InnerException is OperationCanceledException || targetException.InnerException is ExceptionWithoutStack)
                 {
-                    Console.WriteLine(operationCanceledException.Message.Red());
+                    Console.WriteLine(targetException.Message.Red());
                 }
             }
             catch (Exception ex)
@@ -298,7 +330,7 @@ namespace Build
             var isWindows = false;
             //var isWindows = Environment.OSVersion.Platform != PlatformID.Unix;
             var cmdPath = (isWindows ? TryFindCommandPath("cmd") : TryFindCommandPath("npm"))
-                ?? throw new FileNotFoundException("'npm' command isn't found.");
+                ?? throw new ExceptionWithoutStack(new FileNotFoundException("'npm' command isn't found."));
 
             var cmdArgs = isWindows
                 ? $"/C /D /U \"npm {args.Replace("\\", "\\\\").Replace("\"", "\\\"")}\""
@@ -334,6 +366,27 @@ namespace Build
                     return fullPath;
             }
             return null;
+        }
+    }
+
+    internal class ExceptionWithoutStack : Exception
+    {
+        public ExceptionWithoutStack() { }
+
+        public ExceptionWithoutStack(string? message) : base(message)
+        {
+        }
+
+        public ExceptionWithoutStack(Exception innerException) : base(innerException.Message, innerException)
+        {
+        }
+
+        public ExceptionWithoutStack(string? message, Exception? innerException) : base(message, innerException)
+        {
+        }
+
+        protected ExceptionWithoutStack(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
         }
     }
 }

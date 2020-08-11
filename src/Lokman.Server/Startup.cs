@@ -70,8 +70,8 @@ namespace Lokman.Server
             });
 
             app.UseRouting();
-            app.UseCors();
             app.UseGrpcWeb(new GrpcWebOptions() { DefaultEnabled = true });
+            app.UseCors();
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapGrpcService<GrpcDistributedLockService>()
