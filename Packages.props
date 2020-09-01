@@ -3,7 +3,7 @@
   <PropertyGroup>
     <MicrosoftExtensionsVersion>3.1.6</MicrosoftExtensionsVersion>
     <GrpcVersion>2.31.0</GrpcVersion>
-    <GrpcDotNetVersion>2.30.0</GrpcDotNetVersion>
+    <GrpcDotNetVersion>2.31.0</GrpcDotNetVersion>
     <BlazorVersion>3.2.1</BlazorVersion>
   </PropertyGroup>
   <ItemGroup Label="nupkg Versions">
