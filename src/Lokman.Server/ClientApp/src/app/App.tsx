@@ -5,9 +5,9 @@ import LocksPage from 'components/LocksPage/LocksPage';
 export class App extends Component {
   public render(): JSX.Element {
     return (
-      <div>
+      <div class="flex flex-col flex-1">
         <NavBar />
-        <div class="container mx-auto">
+        <div class="container mx-auto flex flex-col flex-1">
           <LocksPage />
         </div>
       </div>

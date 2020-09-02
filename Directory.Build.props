@@ -1,6 +1,7 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props" />
   <PropertyGroup>
-    <SolutionDir Condition="'$(SolutionDir)' == ''">$(MSBuildThisFileDirectory.TrimEnd('\').TrimEnd('/'))\</SolutionDir>
+    <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <NoLogo>true</NoLogo>
     <Authors>Vladimir Chirikov</Authors>
     <Description>Lokman</Description>
@@ -11,8 +12,8 @@
     <Nullable>enable</Nullable>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <OutputPath>$(SolutionDir)artifacts\</OutputPath>
-    <PackageOutputPath>$(SolutionDir)artifacts\nupkg</PackageOutputPath>
+    <OutputPath>$(RepoRoot)artifacts\</OutputPath>
+    <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Features>strict;pdb-path-determinism</Features>
     <!-- Rider doesn't support deterministic build with SourceMap -->
@@ -25,16 +26,30 @@
     <!-- MA0048: File name must match type name -->
     <NoWarn>$(NoWarn);MA0048;NU5105;NU5048;</NoWarn>
     <GenerateFullPaths Condition="'$(TERM_PROGRAM)' == 'vscode'">true</GenerateFullPaths>
+    <!-- SourceLink props: https://github.com/dotnet/sourcelink/issues/159 -->
+    <EnableSourceLink>false</EnableSourceLink>
+    <EnableSourceLink Condition="'$(GitCommitId)' != '' and '$(Configuration)' != 'Debug' and '$(DesignTimeBuild)' != 'true' and '$(BuildingForLiveUnitTesting)' != 'true'">true</EnableSourceLink>
+    <UseSourceLink>$(EnableSourceLink)</UseSourceLink>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/vchirikov/lokman</RepositoryUrl>
+    <PrivateRepositoryUrl>$(RepositoryUrl)</PrivateRepositoryUrl>
+    <ScmRepositoryUrl>$(RepositoryUrl)</ScmRepositoryUrl>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <RevisionId>$(GitCommitId)</RevisionId>
+    <SourceRevisionId>$(GitCommitId)</SourceRevisionId>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <SourceLinkHasSingleProvider>true</SourceLinkHasSingleProvider>
+    <EnableSourceControlManagerQueries>$(EnableSourceLink)</EnableSourceControlManagerQueries>
   </PropertyGroup>
-  <!-- Coverlet bug with SourceLink workaround  https://github.com/tonerdo/coverlet/issues/363 and https://github.com/dotnet/sourcelink/issues/91 -->
-  <!-- Rider doesn't support deterministic build with SourceMap -->
-  <PropertyGroup Condition="'$(IDEA_INITIAL_DIRECTORY)' == ''">
+  <PropertyGroup Condition="'$(EnableSourceLink)' == 'true'">
     <Deterministic>true</Deterministic>
     <DeterministicSourcePaths>true</DeterministicSourcePaths>
     <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
-    <PathMap>'$(SolutionDir)'=/_/</PathMap>
+    <PathMap>'$(RepoRoot)'=/_/</PathMap>
   </PropertyGroup>
-  <ItemGroup Condition="$(DeterministicSourcePaths) == 'true'">
-    <SourceRoot Include="$(MSBuildThisFileDirectory)/" />
+  <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">
+    <SourceRoot Include="$(SolutionDir)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)" />
   </ItemGroup>
 </Project>

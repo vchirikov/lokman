@@ -1,58 +1,43 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { DistributedLockServiceClient } from 'apis/LokmanServiceClientPb'
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { DistributedLockServiceClient } from 'apis/LokmanServiceClientPb';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import { LockInfo } from 'apis/lokman_pb';
-import { AppThunk } from 'app/store';
+import { LoadingStatus } from 'types';
 
-export enum LocksStateStatus {
-  INITIAL,
-  REQUESTED,
-  LOADED,
-  REQUEST_FAIL
-}
 
 export interface LocksState {
   locks: LockInfo[];
-  status: LocksStateStatus;
+  status: LoadingStatus;
   lastError: string | null;
 }
 
-const locksSlice = createSlice({
-  name: "locks",
-  initialState: { locks: [], status: LocksStateStatus.INITIAL, lastError: null } as LocksState,
-  reducers: {
-    getLocksSuccess: (state, action: PayloadAction<LockInfo[]>) => {
-      state.locks = action.payload;
-      state.status = LocksStateStatus.LOADED;
-      state.lastError = null;
-    },
-    getLocksFailure: (state, action: PayloadAction<string>) => {
-      state.lastError = action.payload;
-      state.status = LocksStateStatus.REQUEST_FAIL;
-    },
-    getLocksStarted: state => {
-      state.lastError = null;
-      state.status = LocksStateStatus.REQUESTED;
-    },
-  },
+export const getLocksAsync = createAsyncThunk("locks/getLocksAsync", async () => {
+  const grpcClient = new DistributedLockServiceClient(process.env.PUBLIC_URL);
+  const response = await grpcClient.getLockInfo(new Empty(), null);
+  const locks = response.getLocksList();
+  return locks.filter(l => l.getIsLocked());
 });
 
-export const getLocksAsync = (): AppThunk => async dispatch => {
-  try {
-    dispatch(locksSlice.actions.getLocksStarted());
-    var grpcClient = new DistributedLockServiceClient(process.env.PUBLIC_URL);
-    var response = await grpcClient.getLockInfo(new Empty(), null);
-    const locks = response.getLocksList();
-    dispatch(locksSlice.actions.getLocksSuccess(locks));
-  }
-  catch (ex) {
-    if (ex as Error) {
-      dispatch(locksSlice.actions.getLocksFailure(ex.message));
-    }
-    else {
-      dispatch(locksSlice.actions.getLocksFailure("Unknown error"));
-    }
-  }
-}
+const locksSlice = createSlice({
+  name: "locks",
+  initialState: { locks: [], status: LoadingStatus.Initial, lastError: null } as LocksState,
+  reducers: {},
+  extraReducers: builder => builder
+    .addCase(getLocksAsync.fulfilled, (state, action) => {
+      state.locks = action.payload;
+      state.status = LoadingStatus.Fulfilled;
+      state.lastError = null;
+    })
+    .addCase(getLocksAsync.rejected, (state, action) => {
+      state.lastError = action.error.message ?? "Unknown error";
+      state.status = LoadingStatus.Rejected;
+      state.locks = [];
+    })
+    .addCase(getLocksAsync.pending, (state, action) => {
+      state.lastError = null;
+      state.status = LoadingStatus.Pending;
+    })
+});
+
 
 export default locksSlice;

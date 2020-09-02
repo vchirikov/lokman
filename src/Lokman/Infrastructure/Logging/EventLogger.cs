@@ -35,7 +35,7 @@ namespace Lokman
         public void LogEvent(LogLevel level, string eventName, Exception? exception, IReadOnlyDictionary<string, object>? data)
         {
             if (data is not Dictionary<string, object> values)
-                values = data?.ToDictionary(kv => kv.Key, kv => kv.Value) ?? new();
+                values = data?.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal) ?? new(StringComparer.Ordinal);
 
             _scopeProvider.ForEachScope((scope, dict) => {
                 if (scope is IEnumerable<KeyValuePair<string, object>> properties)

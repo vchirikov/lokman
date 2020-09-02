@@ -295,7 +295,8 @@ namespace Lokman
             if (!_cancellationTokenSource.IsCancellationRequested)
                 _cancellationTokenSource.Cancel();
         }
-
+// this is internal class
+#pragma warning disable MA0097 // A class that implements IComparable<T> or IComparable should override comparison operators
         internal class ExpirationRecord : IComparable<ExpirationRecord>, IEquatable<ExpirationRecord>, IComparable
         {
             public string Key;
@@ -304,6 +305,7 @@ namespace Lokman
 
             public static implicit operator ExpirationRecord((string Key, long Ticks, Action Action) value)
                 => new ExpirationRecord(value.Key, value.Ticks, value.Action);
+
             public ExpirationRecord(string key, long ticks, Action action) => (Key, Ticks, Action) = (key, ticks, action);
             public int CompareTo(ExpirationRecord? record) => record is null ? -1 : Ticks.CompareTo(record.Ticks);
             public int CompareTo(object? obj) => CompareTo(obj as ExpirationRecord);

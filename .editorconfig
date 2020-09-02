@@ -298,3 +298,7 @@ dotnet_diagnostic.RCS1139.severity = none
 
 # RCS1021: Simplify lambda expression.
 dotnet_diagnostic.RCS1021.severity = none
+
+# VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type.
+# misses with DisposeAsyncCore
+dotnet_diagnostic.VSTHRD200.severity = silent
