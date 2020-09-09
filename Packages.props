@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <MicrosoftExtensionsVersion>3.1.7</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>3.1.8</MicrosoftExtensionsVersion>
     <GrpcVersion>2.31.0</GrpcVersion>
     <GrpcDotNetVersion>2.31.0</GrpcDotNetVersion>
     <BlazorVersion>3.2.1</BlazorVersion>
