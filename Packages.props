@@ -46,7 +46,7 @@
 
     <PackageReference Update="CliWrap" Version="3.1.0" />
     <PackageReference Update="Bullseye" Version="3.4.0" />
-    <PackageReference Update="System.CommandLine.DragonFruit" Version="0.3.0-alpha.20465.1" />
+    <PackageReference Update="System.CommandLine.DragonFruit" Version="0.3.0-alpha.20513.2" />
 
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.2.31" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Roslynator.Analyzers" Version="3.0.0-rc" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
