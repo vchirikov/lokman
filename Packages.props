@@ -15,7 +15,7 @@
     <PackageReference Update="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)" />
     <PackageReference Update="Microsoft.AspNetCore.Components" Version="$(MicrosoftExtensionsVersion)" />
 
-    <PackageReference Update="System.IO.Abstractions" Version="12.1.1" />
+    <PackageReference Update="System.IO.Abstractions" Version="12.2.7" />
     <PackageReference Update="System.Text.Json" Version="4.7.2"/>
 
     <PackageReference Update="Grpc.AspNetCore" Version="$(GrpcDotNetVersion)" />
