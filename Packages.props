@@ -36,7 +36,7 @@
     <PackageReference Update="System.Net.Http.Json" Version="$(BlazorVersion)" />
 
     <!-- test/build/analyzers/versioning libs  -->
-    <PackageReference Update="Moq" Version="4.14.5" />
+    <PackageReference Update="Moq" Version="4.15.1" />
     <PackageReference Update="Moq.Analyzers" Version="0.0.8" />
     <PackageReference Update="FluentAssertions" Version="5.10.3" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="16.7.1" />
